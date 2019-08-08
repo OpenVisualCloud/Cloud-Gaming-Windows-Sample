@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="InstallProgramMenuFolder" Name="$(loc.ProductFolderName)" />
+      </Directory>
+
+      <?if $(var.Platform)=x64?>
+        <Directory Id="ProgramFiles64Folder">
+          <Directory Id="INSTALLFOLDERSERVER" Name="$(loc.ProductFolderNameServer)" />
+          <Directory Id="INSTALLFOLDERCLIENT" Name="$(loc.ProductFolderNameClient)" />
+          <Directory Id="INSTALLFOLDERDEVENV" Name="$(loc.ProductFolderNameDevEnv)" />
+        </Directory>
+      <?else?>
+        <Directory Id="ProgramFilesFolder">
+          <Directory Id="INSTALLFOLDERSERVER" Name="$(loc.ProductFolderNameServer)" />
+          <Directory Id="INSTALLFOLDERCLIENT" Name="$(loc.ProductFolderNameClient)" />
+          <Directory Id="INSTALLFOLDERDEVENV" Name="$(loc.ProductFolderNameDevEnv)" />
+        </Directory>
+      <?endif?>
+
+    </Directory>
+  </Fragment>
+
+</Wix>

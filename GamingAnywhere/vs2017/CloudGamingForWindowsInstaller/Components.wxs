@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <ComponentGroup Id="ProductComponentsServer">
+      <ComponentRef Id="MainAppShortcutServer" />
+    </ComponentGroup>
+    <ComponentGroup Id="ProductComponentsClient">
+      <ComponentRef Id="MainAppShortcutClient" />
+    </ComponentGroup>
+
+    <DirectoryRef Id="INSTALLFOLDERSERVER" FileSource="..\$(var.Platform)\$(var.Configuration)\server\">
+      <Component Id="MainAppShortcutServer" Guid="{90D25AE8-FE73-4FF6-80AB-9A49727013A5}">
+        <Shortcut Id="MainAppShortcutServer"
+                  Name="!(loc.ProductNameServer)"
+                  Target="[INSTALLFOLDERSERVER]ga-server-manager.exe"
+                  Directory="InstallProgramMenuFolder"
+                  WorkingDirectory="INSTALLFOLDERSERVER"/>
+        <RegistryValue Id="RegShortKeyServer" Root="HKCU" Key="SOFTWARE\!(loc.ProductFolderNameServer)" Name="Shortcut" Value="1" Type="integer" KeyPath="yes" />
+        <RemoveFolder Id="RemoveStartMenuServer" Directory="InstallProgramMenuFolder" On="uninstall"/>
+        <RemoveFile Id="PurgeAppFolderServer" Name="*" On="uninstall" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="INSTALLFOLDERCLIENT" FileSource="..\$(var.Platform)\$(var.Configuration)\client\">
+      <Component Id="MainAppShortcutClient" Guid="{509C07A7-99E0-499D-B344-703C499DDD6C}">
+        <Shortcut Id="MainAppShortcutClient"
+                  Name="!(loc.ProductNameClient)"
+                  Target="[INSTALLFOLDERCLIENT]ga-client.exe"
+                  Directory="InstallProgramMenuFolder"
+                  WorkingDirectory="INSTALLFOLDERCLIENT"/>
+        <RegistryValue Id="RegShortKeyClient" Root="HKCU" Key="SOFTWARE\!(loc.ProductFolderNameServer)" Name="Shortcut" Value="1" Type="integer" KeyPath="yes" />
+        <RemoveFolder Id="RemoveStartMenuClient" Directory="InstallProgramMenuFolder" On="uninstall"/>
+        <RemoveFile Id="PurgeAppFolderClient" Name="*" On="uninstall" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="ProductComponentsDevEnv">
+      <ComponentRef Id="MainDevEnvFolder"/>
+    </ComponentGroup>
+    <!--Here is place for future DevEnv component-->
+    <DirectoryRef Id="INSTALLFOLDERDEVENV">
+      <Component Id="MainDevEnvFolder" Guid="{044A5848-3BC7-42F3-B739-0A1B87FD1120}">
+        <RemoveFolder Id="RemoveProductFolderNameDevEnv" On="uninstall"/>
+        <RemoveFile Id="PurgeAppFolderDevEnv" Name="*" On="uninstall" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="ExtraElementsServerComponentGroup">
+      <ComponentRef Id="DownloadExtraElementsServer"/>
+    </ComponentGroup>
+    <ComponentGroup Id="ExtraElementsClientComponentGroup">
+      <ComponentRef Id="DownloadExtraElementsClient"/>
+    </ComponentGroup>
+    <ComponentGroup Id="ExtraElementsDevEnvComponentGroup">
+      <ComponentRef Id="DownloadExtraElementsDevEnv"/>
+    </ComponentGroup>
+
+    <DirectoryRef Id="INSTALLFOLDERSERVER" FileSource="..\download-extra-elements\bin\">
+      <Component Id="DownloadExtraElementsServer" Guid="{C5B04F51-2759-4928-A300-0B9F8C614981}">
+        <File Id="DownloadExtraElementsServer" Source="..\download-extra-elements\bin\download-extra-elements.exe" KeyPath="yes" Checksum="yes"/>
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="INSTALLFOLDERCLIENT" FileSource="..\download-extra-elements\bin\">
+      <Component Id="DownloadExtraElementsClient" Guid="{6617C62E-D463-4D41-A20A-42AA8FDD44EE}">
+        <File Id="DownloadExtraElementsClient" Source="..\download-extra-elements\bin\download-extra-elements.exe" KeyPath="yes" Checksum="yes"/>
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="INSTALLFOLDERDEVENV" FileSource="..\download-extra-elements\bin\">
+      <Component Id="DownloadExtraElementsDevEnv" Guid="{F81A677B-50FA-4365-BEFE-D50B9925453F}">
+        <File Id="DownloadExtraElementsDevEnv" Source="..\download-extra-elements\bin\download-extra-elements.exe" KeyPath="yes" Checksum="yes"/>
+      </Component>
+    </DirectoryRef>
+
+    <CustomAction Id="EXECUTE_AFTER_FINALIZE_SERVER"
+                  Directory="INSTALLFOLDERSERVER"
+                  Execute="immediate"
+                  Impersonate="no"
+                  Return="asyncWait"
+                  ExeCommand="[INSTALLFOLDERSERVER]download-extra-elements.exe" />
+    <InstallExecuteSequence>
+      <Custom Action="EXECUTE_AFTER_FINALIZE_SERVER" After="InstallFinalize">NOT Installed</Custom>
+    </InstallExecuteSequence>
+
+    <CustomAction Id="EXECUTE_AFTER_FINALIZE_CLIENT"
+                  Directory="INSTALLFOLDERCLIENT"
+                  Execute="immediate"
+                  Impersonate="no"
+                  Return="asyncWait"
+                  ExeCommand="[INSTALLFOLDERCLIENT]download-extra-elements.exe" />
+    <InstallExecuteSequence>
+      <Custom Action="EXECUTE_AFTER_FINALIZE_CLIENT" After="InstallFinalize">NOT Installed</Custom>
+    </InstallExecuteSequence>
+
+    <CustomAction Id="EXECUTE_AFTER_FINALIZE_DEVENV"
+                  Directory="INSTALLFOLDERDEVENV"
+                  Execute="immediate"
+                  Impersonate="no"
+                  Return="asyncWait"
+                  ExeCommand="[INSTALLFOLDERDEVENV]download-extra-elements.exe dev" />
+    <InstallExecuteSequence>
+      <Custom Action="EXECUTE_AFTER_FINALIZE_DEVENV" After="InstallFinalize">NOT Installed</Custom>
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>

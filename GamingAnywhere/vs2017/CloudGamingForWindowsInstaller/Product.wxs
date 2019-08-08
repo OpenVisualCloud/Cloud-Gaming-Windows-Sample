@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?if $(var.Platform)=x64?>
+  <?define ProductCode = "{2CDA09C4-6361-48D6-BB38-DCDCFDC6045B}"?>
+  <?else?>
+  <?define ProductCode = "{BD7D124C-C157-4540-8591-CE81146DCE15}"?>
+  <?endif?>
+
+  <?define BuildVersion = 1.0.0.0?>
+  <?define UpgradeCode = "{EA5DB988-78E4-42F5-8B33-C6B0740D7B55}"?>
+
+  <Product Id="$(var.ProductCode)"
+            Name="$(loc.ProductName)"
+            Language="1033"
+            Version="$(var.BuildVersion)"
+            Manufacturer="!(loc.CompanyName)"
+            UpgradeCode="$(var.UpgradeCode)">
+
+  <Package InstallerVersion="200" 
+            Compressed="yes" 
+            InstallScope="perMachine" 
+            Platform="$(var.Platform)"
+            Manufacturer="!(loc.CompanyName)"
+            Description="!(loc.Description)"
+            Keywords="!(loc.Keywords)"
+            Comments="!(loc.Comments)"/>
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Cloud Gaming For Windows is already installed." />
+
+    <MediaTemplate EmbedCab="yes"/>
+
+    <Property Id="ARPPRODUCTICON">icon.ico</Property>
+    <Property Id="ARPURLINFOABOUT">http://01.org</Property>
+    <Property Id="ARPHELPLINK">http://github.com/OpenVisualCloud/Cloud-Gaming-Windows-Sample</Property>
+
+    <UIRef Id="WixUI_FeatureTree" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.ProjectDir)\Assets\License.rtf" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.ProjectDir)\Assets\Background.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.ProjectDir)\Assets\Banner.bmp" />
+
+      <Feature Id="ProductFeatureServer" Title="Cloud Gaming For Windows Server" Level="1" ConfigurableDirectory="INSTALLFOLDERSERVER" TypicalDefault="install">
+        <ComponentGroupRef Id="PublishedComponentsServer" />
+        <ComponentGroupRef Id="ProductComponentsServer" />
+        <Feature Id="ExtraElementsServer" Title="Additional components for Server" Level="0">
+          <ComponentGroupRef Id="ExtraElementsServerComponentGroup" />
+          <Condition Level="1">INSTALLEXTERNALSERVER=1</Condition>
+        </Feature>
+      </Feature>
+
+      <Feature Id="ProductFeatureClient" Title="Cloud Gaming For Windows Client" Level="1" ConfigurableDirectory="INSTALLFOLDERCLIENT" TypicalDefault="install">
+        <ComponentGroupRef Id="PublishedComponentsClient" />
+        <ComponentGroupRef Id="ProductComponentsClient" />
+        <Feature Id="ExtraElementsClient" Title="Additional components for Client" Level="0">
+          <ComponentGroupRef Id="ExtraElementsClientComponentGroup" />
+          <Condition Level="1">INSTALLEXTERNALCLIENT=1</Condition>
+        </Feature>
+      </Feature>
+
+      <Feature Id="ProductFeatureDevEnv" Title="Cloud Gaming For Windows Development Environment" Level="1" ConfigurableDirectory="INSTALLFOLDERDEVENV" TypicalDefault="install">
+        <ComponentGroupRef Id="ProductComponentsDevEnv" />
+        <Feature Id="ExtraElementsDevEnv" Title="Additional components for Development" Level="0">
+          <ComponentGroupRef Id="ExtraElementsDevEnvComponentGroup" />
+          <Condition Level="1">INSTALLEXTERNALDEVENV=1</Condition>
+        </Feature>
+      </Feature>
+
+  </Product>
+</Wix>

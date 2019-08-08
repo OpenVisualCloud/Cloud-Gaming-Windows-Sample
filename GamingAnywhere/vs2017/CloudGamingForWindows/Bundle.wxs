@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix RequiredVersion="3.10.0.2103" 
+  xmlns="http://schemas.microsoft.com/wix/2006/wi"
+  xmlns:bal="http://schemas.microsoft.com/wix/BalExtension"
+  xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+	<Bundle Name="Cloud Gaming For Windows" Version="1.0.0.0" Manufacturer=" " UpgradeCode="2b5d8c36-3e1f-4795-93cb-baa462614223">
+
+    <Variable Name="InstallExternalServer" Type="numeric" Value="1" />
+    <Variable Name="InstallExternalServerMsiVariable" bal:Overridable="yes" Value="[InstallExternalServer]" />
+    <Variable Name="InstallExternalClient" Type="numeric" Value="1" />
+    <Variable Name="InstallExternalClientMsiVariable" bal:Overridable="yes" Value="[InstallExternalClient]" />
+    <Variable Name="InstallExternalDevEnv" Type="numeric" Value="1" />
+    <Variable Name="InstallExternalDevEnvMsiVariable" bal:Overridable="yes" Value="[InstallExternalDevEnv]" />
+
+    <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.HyperlinkLicense" >
+      <bal:WixStandardBootstrapperApplication
+        LicenseUrl="https://github.com/OpenVisualCloud/Cloud-Gaming-Windows-Sample/blob/master/LICENSE"
+        ThemeFile="$(var.ProjectDir)Theme.xml"
+        LocalizationFile="$(var.ProjectDir)ThemeCommon.wxl"/>
+    </BootstrapperApplicationRef>
+		<Chain>
+      <MsiPackage Id="CloudGamingForWindowsInstaller"
+                  DisplayName="!(loc.CloudGamingForWindowsInstaller)"
+                  SourceFile="$(var.CloudGamingForWindowsInstaller.TargetPath)"
+                  DisplayInternalUI='yes'
+                  Visible="no">
+        <MsiProperty Name="InstallExternalServer" Value="[InstallExternalServerMsiVariable]" />
+        <MsiProperty Name="InstallExternalClient" Value="[InstallExternalClientMsiVariable]" />
+        <MsiProperty Name="InstallExternalDevEnv" Value="[InstallExternalDevEnvMsiVariable]" />
+      </MsiPackage>
+      <PackageGroupRef Id="MSDK2018"/>
+		</Chain>
+	</Bundle>
+
+   <Fragment>
+     <UI>
+       <Dialog Id="InstallDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+         <Control Id="Install" Type="PushButton" X="304" Y="243" Width="56" Height="17" Default="yes" Text="Install">
+           <Publish Event="EndDialog" Value="Return" />
+         </Control>
+       </Dialog>
+     </UI>
+      <PackageGroup Id="MSDK2018">
+        <ExePackage Id="MSDK2018"
+                      DisplayName="Intel Media SDK 2018 R2"
+                      Cache="yes"
+                      Compressed="yes"
+                      PerMachine="yes"
+                      Permanent="yes"
+                      Vital="yes"
+                      Name="MSDK2018R2.exe"
+                      DownloadUrl="http://registrationcenter-download.intel.com/akdlm/irc_nas/vcp/13618/MSDK2018R2.exe">
+
+          <ExitCode Value ="1" Behavior="forceReboot" />
+            <RemotePayload Description="MSDK2018R2" ProductName="Intel Media SDK 2018 R2" Size='110088192' Version="3.3.0.698" Hash="57FE0D61522CF82DDE948703968CBBEB9E8366D9"/>
+        </ExePackage>
+      </PackageGroup>
+    </Fragment>
+</Wix>
