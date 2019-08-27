@@ -17,7 +17,7 @@ Following table describes recommended hardware configuration:
 |---|---|
 | Host| Intel Purley based|
 |Host CPU|w/SKX/CLX|
-|Card|Intel Paradise Creek (VCGA)|
+|Card|Visual Cloud Accelerator Card – Rendering (VCAC – R)|
 |Node CPU| 8th Gen Intel Core i7|
 |Node GPU|Radeon RX Vega M GH graphics (integrated with Intel CPU)|
 
