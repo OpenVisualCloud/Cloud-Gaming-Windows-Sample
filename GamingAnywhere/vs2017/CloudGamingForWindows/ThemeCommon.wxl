@@ -24,9 +24,9 @@
   <String Id="HelpCloseButton">&amp;Close</String>
   <String Id="InstallLicenseLinkText">[WixBundleName] &lt;a href="#"&gt;license terms&lt;/a&gt;.</String>
   <String Id="InstallAcceptCheckbox">I agree to the license terms and conditions</String>
-  <String Id="InstallExternalServer">Agree to install external components: FFMPEG and EasyHook for Server</String>
-  <String Id="InstallExternalClient">Agree to install external components: FFMPEG and EasyHook for Client</String>
-  <String Id="InstallExternalDevEnv">Agree to install external components: FFMPEG and EasyHook for Development</String>
+  <String Id="InstallExternalServer">Agree to install external components: FFmpeg and EasyHook for Server</String>
+  <String Id="InstallExternalClient">Agree to install external components: FFmpeg and EasyHook for Client</String>
+  <String Id="InstallExternalDevEnv">Agree to install external components: FFmpeg and EasyHook for Development</String>
   <String Id="InstallOptionsButton">&amp;Options</String>
   <String Id="InstallInstallButton">&amp;Install</String>
   <String Id="InstallCloseButton">&amp;Close</String>

@@ -58,6 +58,8 @@ static int gChannels;		/**< Total number of video channels */
 static vsource_t gVsource[VIDEO_SOURCE_CHANNEL_MAX];	/**< Video source */
 static dpipe_t *gPipe[VIDEO_SOURCE_CHANNEL_MAX];	/**< Video pipeline */
 
+bool special_frame_sequence[SPECIAL_FRAME_BLOCK_COUNT] = {true, false, true, false, true, false, true, false, true, true, false, true, false, true, false, false, true, false, false, true};
+
 /**
  * Initialize a video frame
  *

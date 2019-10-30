@@ -32,10 +32,10 @@ void InitializeVulkan()
     gpa::dynamic_vulkan::LoadVulkanFunctions();
 }
 
-VkResult VKAPI_CALL vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo, struct GPADispatchTable const*& tlsRef)
+VkResult VKAPI_CALL vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
 {
     GPA_LOG_DEBUG("%s", "vkQueuePresentKHR was called");
-    return sDispatchTable.Vulkan.vkQueuePresentKHR(queue, pPresentInfo, tlsRef);
+    return sDispatchTable.Vulkan.vkQueuePresentKHR(queue, pPresentInfo);
 }
 
 }  // namespace gpa_hook

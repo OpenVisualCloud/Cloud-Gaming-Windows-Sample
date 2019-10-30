@@ -55,6 +55,7 @@ extern "C" {
 
 #include "controller.h"
 #include "ctrl-sdl.h"
+#include "ctrl-msg.h"
 
 #include "ga-common.h"
 #include "ga-conf.h"
@@ -84,6 +85,20 @@ static int windowSizeY[VIDEO_SOURCE_CHANNEL_MAX];
 static int nativeSizeX[VIDEO_SOURCE_CHANNEL_MAX];
 static int nativeSizeY[VIDEO_SOURCE_CHANNEL_MAX];
 static map<unsigned int, int> windowId2ch;
+
+static SDL_GameController* controller;
+
+static bool enable_latency_measurement;
+static Uint32 special_frame_request_ticks;
+static bool take_measurement;
+static char special_frame_latency_message[1024] = "no latency data yet";
+static HANDLE latency_log_handle = INVALID_HANDLE_VALUE;
+static const char* latency_log_header = "latency [ms]\r\n";
+#define NO_OVERLAPPED_FOR_LATENCY_LOGGING 32
+#define LATENCY_LOGGING_BUFFER_SIZE 64
+static char latency_logging_message_buffers[NO_OVERLAPPED_FOR_LATENCY_LOGGING][LATENCY_LOGGING_BUFFER_SIZE];
+static OVERLAPPED latency_logging_overlapped_structures[NO_OVERLAPPED_FOR_LATENCY_LOGGING]; // here we exploit the fact that structures are zeroed when declared as globals
+static unsigned int latency_logging_idx;
 
 // save files
 static FILE *savefpKeyts = NULL;
@@ -337,6 +352,36 @@ open_audio(struct RTSPThreadParam *rtspParam, AVCodecContext *adecoder) {
 	return;
 }
 
+/** Posts a message to the latency log.
+
+Writes a message to the latency log in an asynchronous,
+best-effort way. First argument is a procedure:
+void buffer_filler(char* buf)
+that is supposed to fill the buf with a null-terminated
+string (buf's size is LATENCY_LOGGING_BUFFER_SIZE).
+Notice that it has to have target newline characters.
+*/
+template <class L>
+void post_latency_logging_message(const L& buffer_filler) {
+	if (latency_log_handle != INVALID_HANDLE_VALUE) {
+		char* message_buffer = latency_logging_message_buffers[latency_logging_idx];
+		OVERLAPPED* overlapped = &latency_logging_overlapped_structures[latency_logging_idx];
+
+		// fail in improbable case when the operation didn't complete yet
+		if (HasOverlappedIoCompleted(overlapped)) {
+			buffer_filler(message_buffer);
+			ZeroMemory(overlapped, sizeof(OVERLAPPED));
+			overlapped->Offset = overlapped->OffsetHigh = 0xFFFFFFFF;
+			WriteFile(latency_log_handle, message_buffer, strlen(message_buffer), NULL, overlapped);
+
+			latency_logging_idx = (latency_logging_idx + 1) % NO_OVERLAPPED_FOR_LATENCY_LOGGING;
+		}
+		else {
+			rtsperror("latency logging operation didn't complete - log will miss an entry\n");
+		}
+	}
+}
+
 // negative x or y means centering-x and centering-y, respectively
 static void
 render_text(SDL_Renderer *renderer, SDL_Window *window, int x, int y, int line, const char *text) {
@@ -418,7 +463,26 @@ render_image(struct RTSPThreadParam *rtspParam, int ch) {
 	rect.h = rtspParam->height[ch];
 #if 1	// only support SDL2
 	SDL_RenderCopy(rtspParam->renderer[ch], rtspParam->overlay[ch], NULL, NULL);
-	SDL_RenderPresent(rtspParam->renderer[ch]);
+	if (!enable_latency_measurement) {
+		// "fast" path
+		SDL_RenderPresent(rtspParam->renderer[ch]);
+	} else {
+		if (!data->is_special) {
+			if (take_measurement) {
+				Uint32 time_diff = SDL_GetTicks() - special_frame_request_ticks;
+				snprintf(special_frame_latency_message, 1024, "end-to-end latency: %d ms", time_diff);
+				post_latency_logging_message(
+					[=](char* buf) {snprintf(buf, LATENCY_LOGGING_BUFFER_SIZE, "%d\r\n", time_diff);});
+				take_measurement = false;
+			}
+			render_text(rtspParam->renderer[ch], rtspParam->surface[ch],
+				0, 0, 0, special_frame_latency_message);
+			SDL_RenderPresent(rtspParam->renderer[ch]);
+		}
+		else {
+			take_measurement = true;
+		}
+	}
 #endif
 	//
 	image_rendered = 1;
@@ -536,6 +600,14 @@ ProcessEvent(SDL_Event *event) {
 			ctrl_client_sendmsg(&m, sizeof(sdlmsg_mouse_t));
 		}
 		break;
+	case SDL_CONTROLLERAXISMOTION:
+	case SDL_CONTROLLERBUTTONDOWN:
+	case SDL_CONTROLLERBUTTONUP:
+		if (rtspconf->ctrlenable) {
+			sdlmsg_controller(&m, controller);
+			ctrl_client_sendmsg(&m, sizeof(sdlmsg_controller_t));
+		}
+		break;
 #ifdef ANDROID
 #define	DEBUG_FINGER(etf)	\
 	rtsperror("XXX DEBUG: finger-event(%d) - x=%d y=%d dx=%d dy=%d p=%d\n",\
@@ -632,6 +704,16 @@ ProcessEvent(SDL_Event *event) {
 				rtspThreadParam.surface[0],
 				-1, -1, 0, (const char *) event->user.data1);
 			SDL_RenderPresent(rtspThreadParam.renderer[0]);
+			break;
+		}
+		if (event->user.code == SDL_USEREVENT_SPECIAL_FRAME_TIMER) {
+			expect_special_frame = true;
+			ctrlmsg_system_t ctrl_msg_to_send;
+			ctrl_msg_to_send.msgsize = htons(sizeof(ctrl_msg_to_send));
+			ctrl_msg_to_send.msgtype = CTRL_MSGTYPE_SYSTEM;
+			ctrl_msg_to_send.subtype = CTRL_MSGSYS_SUBTYPE_SPECIAL_FRAME;
+			special_frame_request_ticks = SDL_GetTicks();
+			ctrl_client_sendmsg(&ctrl_msg_to_send, sizeof(ctrl_msg_to_send));
 			break;
 		}
 		break;
@@ -804,6 +886,17 @@ int InitiatingConnectionToServer(LPCSTR IPAddress) {
 	return 0;
 }
 
+Uint32 push_special_frame_event_callback(Uint32, void*) {
+	SDL_Event event;
+	SDL_UserEvent userevent;
+
+	event.user.type = SDL_USEREVENT;
+	event.user.code = SDL_USEREVENT_SPECIAL_FRAME_TIMER;
+
+	SDL_PushEvent(&event);
+	return 1000;
+}
+
 int main(int argc, char *argv[]) {
 	int i;
 	SDL_Event event;
@@ -817,6 +910,9 @@ int main(int argc, char *argv[]) {
 	char cServerPort[64];
 	string cServerConnectionPath;
 	string pProcessExecutionPath;
+	char pLatencyLoggingPath[MAX_PATH];
+
+	SDL_TimerID special_frame_request_timer;
 
 	// Clearing buffers
 	memset(cCommunicationProtocol, 0, sizeof(cCommunicationProtocol));
@@ -867,6 +963,19 @@ int main(int argc, char *argv[]) {
 	if (ga_conf_readv("server-port", cServerPort, sizeof(cServerPort))) {
 		ga_conf_writev("server-port", cServerPort);
 		rtsperror("Server port: %s\n", cServerPort);
+	}
+	if (ga_conf_readbool("latency-measurement", 0)) {
+		enable_latency_measurement = true;
+	}
+	if (ga_conf_readv("latency-measurement-log", pLatencyLoggingPath, sizeof(pLatencyLoggingPath))) {
+		if (enable_latency_measurement) {
+			latency_log_handle = CreateFile(pLatencyLoggingPath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
+			if (latency_log_handle == INVALID_HANDLE_VALUE)
+				rtsperror("cannot open latency logfile %s\n", pLatencyLoggingPath);
+			else
+				post_latency_logging_message([](char* buf) {strncpy(buf, latency_log_header, LATENCY_LOGGING_BUFFER_SIZE); });
+		} else
+			rtsperror("latency logging was enabled but latency measurement was not - check config file\n");
 	}
 	if (cCommunicationProtocol && cServerAddress && cServerPort) {
 		cServerConnectionPath += cCommunicationProtocol;
@@ -940,6 +1049,15 @@ int main(int argc, char *argv[]) {
 		ga_error("SDL: prefer opengl hardware renderer.\n");
 		SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
 	}
+	if (SDL_NumJoysticks() > 0) {
+		if (SDL_NumJoysticks() > 1) rtsperror("warning: only one gamepad supported\n");
+		for (int i = 0; i < SDL_NumJoysticks(); ++i)
+			if (SDL_IsGameController(i)) {
+				controller = SDL_GameControllerOpen(i);
+				if (controller) break;
+				else rtsperror("could not open gamepad %i: %s\n", i, SDL_GetError());
+			}
+	}
 #if 0	// only support SDL2
 	// enable keyboard repeat?
 	SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
@@ -983,6 +1101,9 @@ int main(int argc, char *argv[]) {
 	}
 	pthread_detach(rtspthread);
 	//
+	if (enable_latency_measurement)
+		special_frame_request_timer = SDL_AddTimer(1000, push_special_frame_event_callback, nullptr);
+	//
 	while(rtspThreadParam.running) {
 		if(SDL_WaitEvent(&event)) {
 			ProcessEvent(&event);
@@ -992,12 +1113,17 @@ int main(int argc, char *argv[]) {
 	rtspThreadParam.quitLive555 = 1;
 	rtsperror("terminating ...\n");
 	//
+	if (enable_latency_measurement)
+		SDL_RemoveTimer(special_frame_request_timer);
+	if (latency_log_handle != INVALID_HANDLE_VALUE)
+		CloseHandle(latency_log_handle);
 #ifndef ANDROID
 	pthread_cancel(rtspthread);
 	if(rtspconf->ctrlenable)
 		pthread_cancel(ctrlthread);
 	pthread_cancel(watchdog);
 #endif
+	if (controller) SDL_GameControllerClose(controller);
 	//SDL_WaitThread(thread, &status);
 	//
 	if(savefpKeyts != NULL) {

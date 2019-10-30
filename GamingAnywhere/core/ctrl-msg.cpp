@@ -32,7 +32,8 @@
 static ctrlsys_handler_t ctrlsys_handler_list[] = {
 	NULL,	/* 0 = CTRL_MSGSYS_SUBTYPE_NULL */
 	NULL,	/* 1 = CTRL_MSGSYS_SUBTYPE_SHUTDOWN */
-	NULL	/* 2 = CTRL_MSGSYS_SUBTYPE_NETREPORT */
+	NULL,	/* 2 = CTRL_MSGSYS_SUBTYPE_NETREPORT */
+	NULL	/* 3 = CTRL_MSGSYS_SUBTYPE_SPECIAL_FRAME */
 };
 
 ctrlsys_handler_t
@@ -63,6 +64,7 @@ ctrlsys_ntoh(ctrlmsg_system_t *msg) {
 	/* no conversion needed, and no size checking */
 	case CTRL_MSGSYS_SUBTYPE_NULL:
 	case CTRL_MSGSYS_SUBTYPE_SHUTDOWN:
+	case CTRL_MSGSYS_SUBTYPE_SPECIAL_FRAME:
 		return 0;
 	case CTRL_MSGSYS_SUBTYPE_NETREPORT:
 		if(msg->msgsize != sizeof(ctrlmsg_system_netreport_t))

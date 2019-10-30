@@ -1,6 +1,8 @@
 #include <liveMedia.hh>
 #include <BasicUsageEnvironment.hh>
 #include <map>
+#include <ga-server-manager-semaphore.h>
+#include <windows.h>
 
 #include "ga-common.h"
 #include "rtspconf.h"
@@ -25,6 +27,8 @@ liveserver_main(void *arg) {
 	struct RTSPConf *rtspconf = rtspconf_global();
 	TaskScheduler* scheduler = BasicTaskScheduler::createNew();
 	UserAuthenticationDatabase* authDB = NULL;
+	HANDLE manager_semaphore;
+
 	env = BasicUsageEnvironment::createNew(*scheduler);
 #if 0	// need access control?
 	// To implement client access control to the RTSP server, do the following:
@@ -84,6 +88,12 @@ liveserver_main(void *arg) {
 	}
 
 	qos_server_start();
+	manager_semaphore = OpenSemaphoreA(SEMAPHORE_MODIFY_STATE, FALSE, SERVER_MANAGER_SEMAPHORE);
+	if (manager_semaphore != NULL) {
+		// The server manager is running and wants our confirmation to go on.
+		ReleaseSemaphore(manager_semaphore, 1, NULL);
+		CloseHandle(manager_semaphore);
+	}
 	env->taskScheduler().doEventLoop(); // does not return
 	qos_server_stop();
 	qos_server_deinit();

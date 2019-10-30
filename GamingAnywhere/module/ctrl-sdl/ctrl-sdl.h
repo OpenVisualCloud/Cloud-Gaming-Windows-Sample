@@ -21,6 +21,7 @@
 
 #include <SDL2/SDL_version.h>
 #include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_gamecontroller.h>
 
 #include "ga-common.h"
 #include "ga-module.h"
@@ -31,6 +32,7 @@
 #define	SDL_EVENT_MSGTYPE_MOUSEKEY	2
 #define SDL_EVENT_MSGTYPE_MOUSEMOTION	3
 #define SDL_EVENT_MSGTYPE_MOUSEWHEEL	4
+#define SDL_EVENT_MSGTYPE_CONTROLLER	5
 
 #if defined(WIN32) && !defined(MSYS)
 #pragma pack(push, 1)
@@ -120,6 +122,26 @@ __attribute__((__packed__))
 #endif
 ;
 typedef struct sdlmsg_mouse_s		sdlmsg_mouse_t;
+
+// controller (gamepad) event
+#if defined(WIN32) && !defined(MSYS)
+#pragma pack(push, 1)
+#endif
+struct sdlmsg_controller_s {
+	unsigned short msgsize;
+	unsigned char msgtype; // SDL_EVENT_MSGTYPE_CONTROLLER
+	unsigned char which;
+
+	unsigned int buttons_pressed;
+	signed short axes_values[SDL_CONTROLLER_AXIS_MAX];
+}
+#if defined(WIN32) && !defined(MSYS)
+#pragma pack(pop)
+#else
+__attribute__((__packed__))
+#endif
+;
+typedef struct sdlmsg_controller_s		sdlmsg_controller_t;
 
 sdlmsg_t* sdlmsg_ntoh(sdlmsg_t *msg);
 

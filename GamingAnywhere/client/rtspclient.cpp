@@ -73,6 +73,8 @@ static FILE *fout = NULL;
 struct RTSPConf *rtspconf;
 int image_rendered = 0;
 
+std::atomic<bool> expect_special_frame;
+
 static int video_sess_fmt = -1;
 static int audio_sess_fmt = -1;
 static const char *video_codec_name = NULL;
@@ -758,6 +760,11 @@ drop_video_frame(int ch/*channel*/, unsigned char *buffer, int bufsize, struct t
 
 ////
 
+static uint8_t get_y(int x, int y, const AVFrame* frame) {
+	auto y_plane = frame->data[0];
+	return y_plane[frame->linesize[0] * y + x];
+}
+
 static int
 play_video_priv(int ch/*channel*/, unsigned char *buffer, int bufsize, struct timeval pts) {
 	AVPacket avpkt;
@@ -769,6 +776,7 @@ play_video_priv(int ch/*channel*/, unsigned char *buffer, int bufsize, struct ti
 	AVPicture *dstframe = NULL;
 	struct timeval ftv;
 	static unsigned fcount = 0;
+
 #ifdef PRINT_LATENCY
 	static struct timeval btv0 = {0, 0};
 	struct timeval ptv0, ptv1, btv1;
@@ -825,6 +833,32 @@ play_video_priv(int ch/*channel*/, unsigned char *buffer, int bufsize, struct ti
 			break;
 		}
 		if(got_picture) {
+			int is_special = 1;
+
+			// TODO optimize
+			if (expect_special_frame) {
+				for (int i = 0; i < SPECIAL_FRAME_BLOCK_COUNT; ++i) {
+					uint32_t acc = 0;
+					for (int x = i * SPECIAL_FRAME_BLOCK_SIZE; x < (i + 1)*SPECIAL_FRAME_BLOCK_SIZE; ++x)
+						for (int y = 0; y < SPECIAL_FRAME_BLOCK_SIZE; ++y)
+							acc += get_y(x, y, vframe[ch]);
+					float avg = static_cast<float>(acc) / (SPECIAL_FRAME_BLOCK_SIZE*SPECIAL_FRAME_BLOCK_SIZE);
+					bool is_white = avg >= 128.0f ? true : false;
+					bool match = is_white == special_frame_sequence[i];
+					if (!match) {
+						is_special = 0;
+						break;
+					}
+				}
+				if (is_special) {
+					// make sure some ordinary frame by accident isn't treated as a special one
+					expect_special_frame = false;
+				}
+			} else {
+				// no frame should be special when not expected
+				is_special = 0;
+			}
+
 #ifdef COUNT_FRAME_RATE
 			cf_frame[ch]++;
 			if(cf_tv0[ch].tv_sec == 0) {
@@ -867,6 +901,7 @@ play_video_priv(int ch/*channel*/, unsigned char *buffer, int bufsize, struct ti
 			pthread_mutex_unlock(&rtspParam->surfaceMutex[ch]);
 			// copy into pool
 			data = dpipe_get(rtspParam->pipe[ch]);
+			data->is_special = is_special;
 			dstframe = (AVPicture*) data->pointer;
 			// do scaling
 			if(vframe[ch]->width  == rtspParam->width[ch]

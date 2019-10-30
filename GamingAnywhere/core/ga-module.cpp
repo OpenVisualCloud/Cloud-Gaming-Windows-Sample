@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <map>
 #include <pthread.h>
+#include <filesystem>
 #ifndef WIN32
 #include <dlfcn.h>
 #endif
@@ -61,6 +62,28 @@ ga_load_module(const char *modname, const char *prefix) {
 	ga_module_t *m;
 	HMODULE handle;
 	ga_module_t * (*do_module_load)();
+	char buf[MAX_PATH];
+	std::filesystem::path path;
+	string modulePath;
+
+	HMODULE hndl = GetModuleHandle("filter-rgb2yuv.dll");
+
+	if (hndl != NULL) {
+		if (GetModuleFileName(hndl, buf, MAX_PATH) > 0) {
+			path = buf;
+			modulePath = path.parent_path().u8string();
+		}
+		else {
+			ga_error("Get module path error, while loading module. Code: %d\n", GetLastError());
+			//return 0;
+		}
+		SetDllDirectory(modulePath.c_str());
+	}
+	else {
+		ga_error("Get module handle error, while loading module. Code: %d\n", GetLastError());
+		//return 0;
+	}
+
 #ifdef WIN32
 	snprintf(fn, sizeof(fn), "%s.dll", modname);
 #elif defined __APPLE__

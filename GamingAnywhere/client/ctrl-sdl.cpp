@@ -207,6 +207,24 @@ sdlmsg_mousemotion(sdlmsg_t *msg, unsigned short mousex, unsigned short mousey, 
 	return msg;
 }
 
+sdlmsg_t *
+sdlmsg_controller(sdlmsg_t *msg, SDL_GameController* controller) {
+	sdlmsg_controller_t *msgc = (sdlmsg_controller_t*)msg;
+	bzero(msg, sizeof(sdlmsg_mouse_t));
+	msgc->msgsize = htons(sizeof(*msgc));
+	msgc->msgtype = SDL_EVENT_MSGTYPE_CONTROLLER;
+
+	// Use enum trickery to automatically process all buttons and axes, not minding what they are in the client.
+	msgc->buttons_pressed = 0;
+	for (int button = 0; button < SDL_CONTROLLER_BUTTON_MAX; ++button)
+		if (SDL_GameControllerGetButton(controller, (SDL_GameControllerButton) button))
+			msgc->buttons_pressed |= 1 << button;
+
+	for (int axis = 0; axis < SDL_CONTROLLER_AXIS_MAX; ++axis)
+		msgc->axes_values[axis] = SDL_GameControllerGetAxis(controller, (SDL_GameControllerAxis) axis);
+	return msg;
+}
+
 int
 sdlmsg_replay_init(void *arg) {
 	struct gaRect *rect = (struct gaRect*) arg;

@@ -22,17 +22,13 @@
 #include "ga-common.h"
 #include "ga-conf.h"
 
-#include "injector.h"
-#include "status.h"
-#include "unicode.h"
-#include "directory.h"
-#include "console-appender.h"
-
 #include "easyhook.h"
 
 #include <windows.h>
 #include <conio.h>
 #include <tchar.h>
+
+#include <string>
 
 int hook_and_launch(const char *ga_root, const char *config_path, const char *app_exe, const char *app_dir, const char* hook_method) {
 	PROCESS_INFORMATION procInfo;
@@ -42,13 +38,15 @@ int hook_and_launch(const char *ga_root, const char *config_path, const char *ap
 	int (*uninstall_hook)();
 	char cmdline[2048];
 	char buf[2048], *ptr;
-	int cmdpos, cmdspace = sizeof(cmdline);
+	int cmdpos = 0, cmdspace = sizeof(cmdline);
 	//
 	int r;
 	unsigned long pid = 0;
 	wchar_t app_exe_w[1024];
 	wchar_t cmdline_w[2048], *ptr_cmdline_w = NULL;
 	wchar_t dllpath_w[1024];
+
+	std::string params;
 
 	if(ga_root == NULL || config_path == NULL) {
 		ga_error("[hook_and_launch] no ga-root nor configuration were specified.\n");
@@ -84,25 +82,22 @@ int hook_and_launch(const char *ga_root, const char *config_path, const char *ap
 		}
 	} while(0);
 
-	cmdline[0] = '\0';
-	cmdpos = 0;
+	fprintf(stderr, "ga_conf_mapsize(): %d\n", ga_conf_mapsize("game-argv"));
 	if(ga_conf_mapsize("game-argv") > 0) {
 		int n;
 		ga_conf_mapreset("game-argv");
-		cmdpos = snprintf(cmdline, cmdspace, "\"%s\"", app_exe);
-		for(	ptr = ga_conf_mapkey("game-argv", buf, sizeof(buf));
-			ptr != NULL && cmdpos < cmdspace;
-			ptr = ga_conf_mapnextkey("game-argv", buf, sizeof(buf))) {
+		for(const char*	one_arg_key = ga_conf_mapkey("game-argv", buf, sizeof(buf));
+						one_arg_key != NULL;
+						one_arg_key = ga_conf_mapnextkey("game-argv", buf, sizeof(buf))) {
 			//
-			char *val, valbuf[1024];
-			val = ga_conf_mapvalue("game-argv", valbuf, sizeof(valbuf));
-			if(val == NULL)
+			char one_param_buf[MAX_PATH];
+			char* one_param = ga_conf_mapvalue("game-argv", one_param_buf, sizeof(one_param_buf));
+			if(one_param == NULL)
 				continue;
-			ga_error("Game arg: %s\n", val);
-			n = snprintf(cmdline+cmdpos, cmdspace-cmdpos, " \"%s\"",
-				val);
-			cmdpos += n;
+			fprintf(stderr, "Game arg: %s\n", one_param);
+			(params += " \"") + one_param + '\"';
 		}
+		cmdpos = snprintf(cmdline, sizeof(cmdline), "%s %s", app_exe, params.c_str());
 		fprintf(stderr, "Cmdline: %s\n", cmdline);
 	}
 	if (!strcmp(hook_method, "GPA") || !strcmp(hook_method, "")) {
@@ -139,12 +134,21 @@ int hook_and_launch(const char *ga_root, const char *config_path, const char *ap
 	fprintf(stderr, "Starting hooking. Method: %s\n", hook_method);
 	if (!strcmp(hook_method, "GPA") || !strcmp(hook_method, ""))
 	{
-		std::wstring pProcessExecutionPath(L"gpa-capture.exe -L gpa-hook -t \"");
+#ifdef _WIN64
+		std::wstring pProcessExecutionPath(L"gpa-injector.exe -L gpa-hook -t \"");
+#else
+		std::wstring pProcessExecutionPath(L"gpa-injector32.exe -L gpa-hook -t \"");
+#endif
 		std::string appNameTmp(app_exe);
 		std::wstring appName;
 		appName.assign(appNameTmp.begin(), appNameTmp.end());
 		pProcessExecutionPath += appName;
 		pProcessExecutionPath += L"\"";
+		if (params.length() > 0) {
+			std::wstring w_params;
+			w_params.assign(params.begin(), params.end());
+			(pProcessExecutionPath += L" --") += w_params;
+		}
 
 		STARTUPINFO si;
 		PROCESS_INFORMATION pi;
@@ -163,7 +167,7 @@ int hook_and_launch(const char *ga_root, const char *config_path, const char *ap
 		delete alloc;
 
 		if (!ret) {
-			printf("Launch failed. Error no: %s", GetLastError());
+			printf("Launch failed. Error no: %d", GetLastError());
 			return -1;
 		}
 		//Wait for process end, because of shared memory
@@ -196,7 +200,7 @@ int hook_and_launch(const char *ga_root, const char *config_path, const char *ap
 	return 0;
 }
 
-void SetSharedMemory(bool server_view, const char* audio_type, HANDLE *hMapFile) {
+void SetSharedMemory(bool server_view, bool enable_controller, const char* audio_type, HANDLE *hMapFile) {
 
 	const char szName[] = { "GA_SHARE" };
 
@@ -204,6 +208,7 @@ void SetSharedMemory(bool server_view, const char* audio_type, HANDLE *hMapFile)
 
 	strcpy(sharedParams.audio_type, audio_type);
 	sharedParams.server_view = server_view;
+	sharedParams.enable_controller = enable_controller;
 
 	if (hMapFile == NULL)
 	{
@@ -234,6 +239,7 @@ int main(int argc, char *argv[]) {
 	char app_dir[MAX_PATH] = "";
 	char hook_method[64] = "";
 	bool server_view = false;
+	bool enable_controller = false;
 	char app_exe[MAX_PATH] = "";
 	char loader_exe[MAX_PATH] = "";
 	char loader_dir[MAX_PATH] = "";
@@ -282,6 +288,9 @@ int main(int argc, char *argv[]) {
 	if (!ga_conf_readv("hook-audio", audio_type, sizeof(audio_type))) {
 		audio_type[0] = '\0';
 	}
+	if (enable_controller = ga_conf_readbool("enable-gamepad", 0) != 0) {
+		fprintf(stderr, "Controller (gamepad) enabled.\n");
+	}
 
 	// get loader's info
 	GetModuleFileNameA(NULL, loader_exe, sizeof(loader_exe));
@@ -306,7 +315,7 @@ int main(int argc, char *argv[]) {
 	}
 	fprintf(stderr, "Config file:  %s\n", config_path);
 
-	SetSharedMemory(server_view, audio_type, hMapFile);
+	SetSharedMemory(server_view, enable_controller, audio_type, hMapFile);
 
 	ret = hook_and_launch(loader_dir, config_path, app_exe, app_dir, hook_method);
 

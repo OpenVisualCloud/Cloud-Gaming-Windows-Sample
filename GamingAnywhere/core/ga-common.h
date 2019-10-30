@@ -60,8 +60,10 @@ extern "C" {
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <Xinput.h>
 #include <stdlib.h>
 #include <stdio.h>
+
 
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
@@ -90,6 +92,7 @@ struct gaImage {
 
 struct SharedParams {
 	bool server_view;
+	bool enable_controller;
 	char audio_type[64];
 };
 
@@ -130,6 +133,11 @@ EXPORT const char ** ga_lookup_ffmpeg_decoders(const char *key);
 EXPORT enum AVCodecID ga_lookup_codec_id(const char *key);
 
 EXPORT void	pthread_cancel_init();
+
+// TODO do this right
+EXPORT void set_post_new_xinput_state(void(*new_post_new_xinput_state_ptr)(const XINPUT_STATE&));
+EXPORT void call_post_new_xinput_state(const XINPUT_STATE&);
+
 #ifdef ANDROID
 #include <pthread.h>
 EXPORT int	pthread_cancel(pthread_t thread);

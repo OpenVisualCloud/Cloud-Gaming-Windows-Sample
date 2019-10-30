@@ -485,6 +485,7 @@ tcp_again:
 				continue;
 			}
 		}
+
 		// handle message
 		if(ctrlsys_handle_message(buf+bufhead, msglen) != 0) {
 			// message has been handeled, do nothing

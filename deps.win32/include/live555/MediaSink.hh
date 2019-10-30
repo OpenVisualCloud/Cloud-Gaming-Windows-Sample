@@ -75,7 +75,7 @@ public:
       // if "maxBufferSize" is >0, use it - instead of "maxSize" to compute the buffer size
   ~OutPacketBuffer();
 
-  static unsigned maxSize;
+  static __declspec(dllimport) unsigned maxSize;
   static void increaseMaxSizeTo(unsigned newMaxSize) { if (newMaxSize > OutPacketBuffer::maxSize) OutPacketBuffer::maxSize = newMaxSize; }
 
   unsigned char* curPtr() const {return &fBuf[fPacketStart + fCurOffset];}

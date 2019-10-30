@@ -58,6 +58,8 @@
 #include <list>
 using namespace std;
 
+static void(*post_new_xinput_state_ptr)(const XINPUT_STATE&);
+
 #ifndef NIPQUAD
 /** For printing IPv4 addresses: convert an unsigned int to 4 unsigned char. */
 #define NIPQUAD(x)	((unsigned char*)&(x))[0],	\
@@ -1061,6 +1063,15 @@ ga_lookup_codec_id(const char *key) {
 		return AV_CODEC_ID_NONE;
 	}
 	return e->id;
+}
+
+EXPORT void set_post_new_xinput_state(void(*new_post_new_xinput_state_ptr)(const XINPUT_STATE&)) {
+	post_new_xinput_state_ptr = new_post_new_xinput_state_ptr;
+}
+
+EXPORT void call_post_new_xinput_state(const XINPUT_STATE& arg) {
+	if (post_new_xinput_state_ptr != NULL)
+		post_new_xinput_state_ptr(arg);
 }
 
 #ifdef ANDROID

@@ -496,8 +496,17 @@ ga_hook_init() {
 	//
 	enable_server_rate_control = ga_conf_readbool("enable-server-rate-control", 0);
 	server_token_fill_interval = ga_conf_readint("server-token-fill-interval");
+    if (server_token_fill_interval < 0)
+    {
+        server_token_fill_interval  = 41667; // 41667 is default value for server-token-fill-interval
+    }
+
 	server_num_token_to_fill = ga_conf_readint("server-num-token-to-fill");
 	server_max_tokens = ga_conf_readint("server-max-tokens");
+    if ( server_max_tokens <= 0 )
+    {
+        server_max_tokens = 2; // 2 is default value;
+    }
 	video_fps = ga_conf_readint("video-fps");
 	//
 	// XXX: check for valid configurations

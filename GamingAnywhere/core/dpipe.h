@@ -36,6 +36,7 @@ typedef struct dpipe_buffer_s {
 	void *pointer;		/**< pointer to a frame buffer. Aligned to 8-byte address: is equivalent to internal + offset */
 	void *internal;		/**< internal pointer to the allocated buffer space. Used with malloc() and free(). */
 	int offset;		/**< data pointer offset from internal */
+	int is_special;
 	struct dpipe_buffer_s *next;	/**< pointer to the next dpipe frame buffer */
 }	dpipe_buffer_t;
 

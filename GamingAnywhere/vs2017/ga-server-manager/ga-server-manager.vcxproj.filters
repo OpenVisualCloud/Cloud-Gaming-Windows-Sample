@@ -23,5 +23,8 @@
     <ClInclude Include="ga-server-manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ga-server-manager-semaphore.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

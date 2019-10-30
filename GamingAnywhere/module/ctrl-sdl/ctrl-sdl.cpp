@@ -41,6 +41,9 @@
 
 #include "rtspconf.h"
 
+#include <Windows.h>
+#include <Xinput.h>
+
 #include <map>
 using namespace std;
 
@@ -205,6 +208,47 @@ sdlmsg_mousemotion(sdlmsg_t *msg, unsigned short mousex, unsigned short mousey, 
 	msgm->mouseRelX = htons(relx);
 	msgm->mouseRelY = htons(rely);
 	return msg;
+}
+
+static void
+sdlmsg_controller_reverse(sdlmsg_t *msg) {
+	XINPUT_STATE new_state = {};
+	sdlmsg_controller_t *msgc = (sdlmsg_controller_t*)msg;
+	new_state.dwPacketNumber = 0;
+
+	//MessageBox(0, "ay", NULL, 0);
+
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_DPAD_UP)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_UP;
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_DPAD_DOWN)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN;
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_DPAD_LEFT)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_LEFT;
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_RIGHT;
+
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_START)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_START;
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_BACK)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_BACK;
+
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_LEFTSHOULDER)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_LEFT_SHOULDER;
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;
+
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_LEFTSTICK)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_LEFT_THUMB;
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_RIGHTSTICK)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_THUMB;
+
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_A)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_A;
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_B)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_B;
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_X)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_X;
+	if (msgc->buttons_pressed & (1 << SDL_CONTROLLER_BUTTON_Y)) new_state.Gamepad.wButtons |= XINPUT_GAMEPAD_Y;
+
+	new_state.Gamepad.bLeftTrigger = msgc->axes_values[SDL_CONTROLLER_AXIS_TRIGGERLEFT] / (32767 / 255);
+	new_state.Gamepad.bRightTrigger = msgc->axes_values[SDL_CONTROLLER_AXIS_TRIGGERRIGHT] / (32767 / 255);
+
+	new_state.Gamepad.sThumbLX = msgc->axes_values[SDL_CONTROLLER_AXIS_LEFTX];
+	// not sure why this minus has to be there...
+	new_state.Gamepad.sThumbLY = -msgc->axes_values[SDL_CONTROLLER_AXIS_LEFTY];
+
+	new_state.Gamepad.sThumbRX = msgc->axes_values[SDL_CONTROLLER_AXIS_RIGHTX];
+	// not sure if this minus has to be there...
+	new_state.Gamepad.sThumbRY = -msgc->axes_values[SDL_CONTROLLER_AXIS_RIGHTY];
+
+	call_post_new_xinput_state(new_state);
 }
 
 int
@@ -438,6 +482,9 @@ sdlmsg_replay_native(sdlmsg_t *msg) {
 			in.mi.dwFlags = MOUSEEVENTF_MOVE;
 		}
 		SendInput(1, &in, sizeof(in));
+		break;
+	case SDL_EVENT_MSGTYPE_CONTROLLER:
+		sdlmsg_controller_reverse(msg);
 		break;
 	default: // do nothing
 		break;

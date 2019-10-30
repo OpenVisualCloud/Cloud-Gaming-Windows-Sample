@@ -1,4 +1,5 @@
 #include "ga-server-manager.h"
+#include "ga-server-manager-semaphore.h"
 #include <string>
 
 int __cdecl main(int argc, char **argv)
@@ -26,8 +27,11 @@ int __cdecl main(int argc, char **argv)
 		std::string current_working_dir(pCurrentDir);
 
 		//create path to execute process
+
+		if (current_working_dir[0] != '"') pProcessExecutionPath += '"';
+
 		pProcessExecutionPath += current_working_dir;
-		pProcessExecutionPath += "\\config\\server.conf";
+		pProcessExecutionPath += "\\config\\server.conf\"";
 		printf("GA config path: %s\\config\\server.conf\n", pCurrentDir);
 	}
 	else {
@@ -36,7 +40,17 @@ int __cdecl main(int argc, char **argv)
 			return -1;
 		}
 		std::string current_working_dir(argv[1]);
-		pProcessExecutionPath += current_working_dir;
+
+        // Ensure first char is '"'
+        if(current_working_dir[0] != '"')
+            pProcessExecutionPath += '"';
+
+        pProcessExecutionPath += current_working_dir;
+
+        // Ensure last char is '"'
+        if (current_working_dir[current_working_dir.length() - 1] != '"')
+            pProcessExecutionPath += '"';
+
 		printf("GA config path: %s\n", argv[1]);
 	}
 
@@ -111,6 +125,7 @@ int __cdecl main(int argc, char **argv)
 
 			STARTUPINFO si;
 			PROCESS_INFORMATION pi;
+			HANDLE semaphore;
 
 			// set the size of the structures
 			ZeroMemory(&si, sizeof(si));
@@ -120,10 +135,24 @@ int __cdecl main(int argc, char **argv)
 			char *alloc = new char[pProcessExecutionPath.length() + 1];
 			strcpy(alloc, pProcessExecutionPath.c_str());
 
+			semaphore = CreateSemaphore(NULL, 0, 1, SERVER_MANAGER_SEMAPHORE);
+			if (GetLastError() == ERROR_ALREADY_EXISTS) {
+				// This means we bumped into some other semaphore. Use fallback in this case.
+				CloseHandle(semaphore);
+				semaphore = NULL;
+			}
+
 			// start the program up
 			if (CreateProcess(NULL, alloc, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-
-				Sleep(10000);
+				if (semaphore != NULL) {
+					if (WaitForSingleObject(semaphore, 300000) != WAIT_OBJECT_0)
+						printf("Warning: waiting for server init failed.\n");
+				}
+				else {
+					// fallback
+					printf("Warning: waiting for server init failed - using fallback.\n");
+					Sleep(120000);
+				}
 				//// Echo the buffer back to the sender
 				iSendResult = send(clientSocket, recvbuf, iResult, 0);
 				if (iSendResult == SOCKET_ERROR) {
@@ -138,6 +167,7 @@ int __cdecl main(int argc, char **argv)
 			else {
 				printf("Creating process failed: %d", GetLastError());
 			}
+			if (semaphore != NULL) CloseHandle(semaphore);
 			delete alloc;
 			// Close process and thread handles.
 			CloseHandle(pi.hProcess);

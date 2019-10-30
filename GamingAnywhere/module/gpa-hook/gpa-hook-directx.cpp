@@ -12,7 +12,11 @@ SPDX-License-Identifier: MIT
 
 #include "ga-hook-common.h"
 #include "ga-hook-coreaudio.h"
+#include "ga-hook-xinput.h"
 #include "ga-common.h"
+#include "vsource.h"
+#include "ctrl-msg.h"
+#include "ctrl-sdl.h"
 
 #include "PixelShader.h"
 #include "VertexShader.h"
@@ -21,12 +25,15 @@ SPDX-License-Identifier: MIT
 #include <stdlib.h>
 #include <stdint.h>
 #include <vector>
+#include <atomic>
 #include <DirectXMath.h>
 
+using namespace gpa;
 
 namespace gpa_hook {
 
-	using namespace gpa::dynamic_directx;
+	static IDirect3DSurface9 *resolvedSurface = NULL;
+	static IDirect3DSurface9 *offscreenSurface = NULL;
 
 	typedef struct _VERTEX
 	{
@@ -50,7 +57,8 @@ namespace gpa_hook {
 	bool gFirstFrame = true;
 	bool gIsPossibleToCaptureMouse = false;
 
-	enum DX_VERSION {
+	enum DX_VERSION
+	{
 		dx_none = 0,
 		dx_9,
 		dx_10,
@@ -60,7 +68,19 @@ namespace gpa_hook {
 
 	DXGI_FORMAT pDXGI_FORMAT = DXGI_FORMAT_UNKNOWN;
 
-	void MouseCapturePrepare(ID3D11Device*	pDevice) {
+	enum class SPECIAL_FRAME_STATE
+	{
+		READY = 0,
+		SKIP = 1,
+		EMIT = 2,
+	};
+
+	static uint8_t special_frame_line[4 * SPECIAL_FRAME_BLOCK_SIZE * SPECIAL_FRAME_BLOCK_COUNT];
+
+	std::atomic<SPECIAL_FRAME_STATE> special_frame_state;
+
+	void MouseCapturePrepare(ID3D11Device*	pDevice)
+	{
 
 		HRESULT hr = pDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&pDxgiDevice));
 
@@ -105,7 +125,8 @@ namespace gpa_hook {
 		gFirstFrame = false;
 	}
 
-	bool MouseCapture(ID3D11Device*	pDevice, ID3D11DeviceContext *pContext, D3D11_TEXTURE2D_DESC desc, ID3D11RenderTargetView *pRTV) {
+	bool MouseCapture(ID3D11Device*	pDevice, ID3D11DeviceContext *pContext, D3D11_TEXTURE2D_DESC desc, ID3D11RenderTargetView *pRTV)
+	{
 
 		CURSORINFO info = { 0 };
 		info.cbSize = sizeof(info);
@@ -348,7 +369,8 @@ namespace gpa_hook {
 		return true;
 	}
 
-	unsigned char* MouseSDLCapture(D3D11_MAPPED_SUBRESOURCE mappedScreen, D3D11_TEXTURE2D_DESC desc) {
+	unsigned char* MouseSDLCapture(D3D11_MAPPED_SUBRESOURCE mappedScreen, D3D11_TEXTURE2D_DESC desc)
+	{
 
 		SDL_Rect dest;
 		std::vector <SDL_Cursor_Data *>pCursorData;
@@ -407,7 +429,8 @@ namespace gpa_hook {
 		return 0;
 	}
 
-	static int DXGI_get_resolution(IDXGISwapChain *pSwapChain) {
+	static int DXGI_get_resolution(IDXGISwapChain *pSwapChain)
+	{
 		DXGI_SWAP_CHAIN_DESC pDESC;
 		static int initialized = 0;
 		//
@@ -423,23 +446,239 @@ namespace gpa_hook {
 		return 0;
 	}
 
-	static int hook_audio(const char *type) {
-		if (type == NULL)
+	static int D3D9_get_resolution(IDirect3DDevice9 *pDevice)
+	{
+		HRESULT hr;
+		D3DSURFACE_DESC desc;
+		IDirect3DSurface9 *renderSurface;
+		static int initialized = 0;
+		//
+		if (initialized > 0) {
 			return 0;
-		if (*type == '\0')
-			return 0;
-		if (strcmp(type, "coreaudio") == 0)
-			return hook_coreaudio();
-#ifdef ENABLE_WINMM
-		if (strcmp(type, "winmm") == 0)
-			return hook_winmm();
-#endif
+		}
+		// get current resolution
+		hr = pDevice->GetRenderTarget(0, &renderSurface);
+		if (!renderSurface || FAILED(hr))
+			return -1;
+		renderSurface->GetDesc(&desc);
+		renderSurface->Release();
+		//
+		if (ga_hook_get_resolution(desc.Width, desc.Height) < 0)
+			return -1;
+		initialized = 1;
 		return 0;
+	}
+
+	static bool D3D9_screen_capture(IDirect3DDevice9 * pDevice)
+	{
+		static int frame_interval;
+		static LARGE_INTEGER initialTv, captureTv, freq;
+		static int capture_initialized = 0;
+		//
+		HRESULT hr;
+		D3DSURFACE_DESC desc;
+		IDirect3DSurface9 *renderSurface, *oldRenderSurface;
+		D3DLOCKED_RECT lockedRect;
+		int i;
+		dpipe_buffer_t *data;
+		vsource_frame_t *frame;
+		//
+		if (vsource_initialized == 0)
+			return false;
+		//
+		renderSurface = oldRenderSurface = NULL;
+		//
+		hr = pDevice->GetRenderTarget(0, &renderSurface);
+		if (FAILED(hr)) {
+			if (hr == D3DERR_INVALIDCALL) {
+				ga_error("GetRenderTarget failed (INVALIDCALL)\n");
+			}
+			else if (hr == D3DERR_NOTFOUND) {
+				ga_error("GetRenderTarget failed (D3DERR_NOTFOUND)\n");
+			}
+			else {
+				ga_error("GetRenderTarget failed. (other)\n");
+			}
+		}
+		if (renderSurface == NULL) {
+			ga_error("renderSurface == NULL.\n");
+			return false;
+		}
+
+		renderSurface->GetDesc(&desc);
+
+		if (desc.Width != game_width
+			|| desc.Height != game_height) {
+			return false;
+		}
+
+		if (capture_initialized == 0) {
+			frame_interval = 1000000 / video_fps; // in the unif of us
+			frame_interval++;
+			QueryPerformanceFrequency(&freq);
+			QueryPerformanceCounter(&initialTv);
+			capture_initialized = 1;
+		}
+		else {
+			QueryPerformanceCounter(&captureTv);
+		}
+		// check if the surface of local game enable multisampling,
+		// multisampling enabled will avoid locking in the surface
+		// if yes, create a no-multisampling surface and copy frame into it
+		if (desc.MultiSampleType != D3DMULTISAMPLE_NONE) {
+			if (resolvedSurface == NULL) {
+				hr = pDevice->CreateRenderTarget(game_width, game_height,
+					desc.Format,
+					D3DMULTISAMPLE_NONE,
+					0,			// non multisampleQuality
+					FALSE,			// lockable
+					&resolvedSurface, NULL);
+				if (FAILED(hr)) {
+					ga_error("CreateRenderTarget(resolvedSurface) failed.\n");
+					return false;
+				}
+			}
+
+			hr = pDevice->StretchRect(renderSurface, NULL,
+				resolvedSurface, NULL, D3DTEXF_NONE);
+			if (FAILED(hr)) {
+				ga_error("StretchRect failed.\n");
+				return false;
+			}
+
+			oldRenderSurface = renderSurface;
+			renderSurface = resolvedSurface;
+		}
+
+		// create offline surface in system memory
+		if (offscreenSurface == NULL) {
+			hr = pDevice->CreateOffscreenPlainSurface(game_width, game_height,
+				desc.Format,
+				D3DPOOL_SYSTEMMEM,
+				&offscreenSurface, NULL);
+			if (FAILED(hr)) {
+				ga_error("Create offscreen surface failed.\n");
+				return false;
+			}
+		}
+
+		// copy the render-target data from device memory to system memory
+		hr = pDevice->GetRenderTargetData(renderSurface, offscreenSurface);
+
+		if (FAILED(hr)) {
+			ga_error("GetRenderTargetData failed.\n");
+			if (oldRenderSurface)
+				oldRenderSurface->Release();
+			else
+				renderSurface->Release();
+			return false;
+		}
+
+		if (oldRenderSurface)
+			oldRenderSurface->Release();
+		else
+			renderSurface->Release();
+
+		// start to lock screen from offline surface
+		hr = offscreenSurface->LockRect(&lockedRect, NULL, NULL);
+		if (FAILED(hr)) {
+			ga_error("LockRect failed.\n");
+			return false;
+		}
+		// copy image
+		do {
+			unsigned char *src, *dst;
+			data = dpipe_get(g_pipe[0]);
+			frame = (vsource_frame_t*)data->pointer;
+			frame->pixelformat = AV_PIX_FMT_BGRA;
+			frame->realwidth = desc.Width;
+			frame->realheight = desc.Height;
+			frame->realstride = desc.Width << 2;
+			frame->realsize = frame->realwidth * frame->realstride;
+			frame->linesize[0] = frame->realstride;//frame->stride;
+			//
+			src = (unsigned char*)lockedRect.pBits;
+			dst = (unsigned char*)frame->imgbuf;
+			for (i = 0; i < /*encoder_height*/frame->realheight; i++) {
+				CopyMemory(dst, src, frame->realstride/*frame->stride*/);
+				src += lockedRect.Pitch;
+				dst += frame->realstride;//frame->stride;
+			}
+			frame->imgpts = pcdiff_us(captureTv, initialTv, freq) / frame_interval;
+			gettimeofday(&frame->timestamp, NULL);
+		} while (0);
+
+		// duplicate from channel 0 to other channels
+		for (i = 1; i < SOURCES; i++) {
+			int j;
+			dpipe_buffer_t *dupdata;
+			vsource_frame_t *dupframe;
+			dupdata = dpipe_get(g_pipe[i]);
+			dupframe = (vsource_frame_t*)dupdata->pointer;
+			//
+			vsource_dup_frame(frame, dupframe);
+			//
+			dpipe_store(g_pipe[i], dupdata);
+		}
+		dpipe_store(g_pipe[0], data);
+
+		offscreenSurface->UnlockRect();
+#if 1	// XXX: disable until we have found a good place to safely Release()
+		if (hook_boost == 0) {
+			if (offscreenSurface != NULL) {
+				offscreenSurface->Release();
+				offscreenSurface = NULL;
+			}
+			if (resolvedSurface != NULL) {
+				resolvedSurface->Release();
+				resolvedSurface = NULL;
+			}
+		}
+#endif
+		return true;
+	}
+
+	static void special_frame_request_handler(ctrlmsg_system_t *)
+	{
+		special_frame_state = SPECIAL_FRAME_STATE::SKIP;
+	}
+
+	static void prepare_special_frame_request_handling()
+	{
+		ga_error("special frame handler setup\n");
+		ctrlsys_set_handler(CTRL_MSGSYS_SUBTYPE_SPECIAL_FRAME, special_frame_request_handler);
+
+		for (int i = 0; i < SPECIAL_FRAME_BLOCK_COUNT; ++i) {
+			uint8_t color = special_frame_sequence[i] ? 255 : 0;
+			for (int x = i * SPECIAL_FRAME_BLOCK_SIZE; x < (i + 1)*SPECIAL_FRAME_BLOCK_SIZE; ++x) {
+				int m = 4 * x;
+				special_frame_line[m + 0] = color;
+				special_frame_line[m + 1] = color;
+				special_frame_line[m + 2] = color;
+				special_frame_line[m + 3] = 0xFF;
+			}
+		}
+	}
+
+	static int hook_audio(const char *type)
+	{
+	if (type == NULL)
+		return 0;
+	if (*type == '\0')
+		return 0;
+	if (strcmp(type, "coreaudio") == 0)
+		return hook_coreaudio();
+#ifdef ENABLE_WINMM
+	if (strcmp(type, "winmm") == 0)
+		return hook_winmm();
+#endif
+	return 0;
 	}
 
 	void InitializeDirectX()
 	{
-		gpa::dynamic_directx::LoadDirectXFunctions();
+		dynamic_directx::LoadDirectXFunctions();
+
 		pthread_t ga_server_thread;
 
 		if (ga_hook_init() < 0) {
@@ -452,22 +691,66 @@ namespace gpa_hook {
 			exit(EXIT_FAILURE);
 		}
 
+		if (g_SharedParams->enable_controller) {
+			hook_xinput();
+			set_post_new_xinput_state(post_new_xinput_state);
+		}
+
 		if (pthread_create(&ga_server_thread, NULL, ga_server, NULL) != 0) {
 			ga_error("cannot create GA server thread\n");
 		}
 		pthread_detach(ga_server_thread);
+
+		prepare_special_frame_request_handling();
+	}
+
+	////////////////////////////////////
+	////////		DX9			////////
+	////////////////////////////////////
+	//Prepared for future implementation
+	//HRESULT WINAPI D3D9CreateDevice(IDirect3D9* self, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS * pPresentationParameters, IDirect3DDevice9 ** ppReturnedDeviceInterface)
+	//{
+	//	GPA_LOG_DEBUG("%s", "Workload uses D3D9CreateDevice()");
+	//	HRESULT hr = self->CreateDevice(Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
+	//
+	//	return hr;
+	//}
+	HRESULT WINAPI D3D9Present(IDirect3DDevice9* self, const RECT * pSourceRect, const RECT * pDestRect, HWND hDestWindowOverride, const RGNDATA * pDirtyRegion)
+	{
+		GPA_LOG_INFO("%s", "Workload uses D3D9Present");
+
+		static int present_hooked = 0;
+
+		if (present_hooked == 0) {
+			present_hooked = 1;
+		}
+
+		HRESULT hr = self->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+
+		if (resolution_retrieved == 0) {
+			if (D3D9_get_resolution(self) >= 0) {
+				resolution_retrieved = 1;
+			}
+			return hr;
+		}
+
+		// rate controller
+		if (enable_server_rate_control) {
+			if (ga_hook_video_rate_control() > 0)
+				D3D9_screen_capture(self);
+		}
+		else {
+			D3D9_screen_capture(self);
+		}
+
+		return hr;
 	}
 
 	////////////////////////////////////
 	////////		DX11		////////
 	////////////////////////////////////
-	HRESULT WINAPI DXGIPresent(IDXGISwapChain* self, UINT SyncInterval, UINT Flags,
-		struct GPADispatchTable const*& tlsRef)
+	HRESULT WINAPI DXGIPresent(IDXGISwapChain* self, UINT SyncInterval, UINT Flags)
 	{
-		// LAYER_PREAMBLE() is responsible for establishing the correct dispatch table where multiple
-		// layers exist
-		LAYER_PREAMBLE(tlsRef);
-		// your layer-specific code/function calls here
 		GPA_LOG_DEBUG("%s", "Workload uses IDXGISwapChainTable.Present()");
 
 		static int frame_interval;
@@ -509,7 +792,7 @@ namespace gpa_hook {
 		}
 
 		//
-		if (/*enable_server_rate_control &&*/ ga_hook_video_rate_control() < 0)
+		if (enable_server_rate_control && ga_hook_video_rate_control() < 0)
 			return hr;
 
 		static enum DX_VERSION dx_version = dx_11;
@@ -586,6 +869,40 @@ namespace gpa_hook {
 
 			// copy image
 			do {
+				if (special_frame_state == SPECIAL_FRAME_STATE::SKIP) {
+					special_frame_state = SPECIAL_FRAME_STATE::EMIT;
+				}
+				else if (special_frame_state == SPECIAL_FRAME_STATE::EMIT) {
+					auto special_block_width = SPECIAL_FRAME_BLOCK_SIZE * SPECIAL_FRAME_BLOCK_COUNT;
+					auto special_block_height = SPECIAL_FRAME_BLOCK_SIZE;
+					if (desc.Width < special_block_width || desc.Height < special_block_height)
+					{
+						ga_error("frame too small to emit latency measurement frame");
+					}
+					else {
+						dpipe_buffer_t *special_frame_data;
+						vsource_frame_t *special_frame;
+
+						special_frame_data = dpipe_get(g_pipe[0]);
+						special_frame = (vsource_frame_t*)special_frame_data->pointer;
+
+						special_frame->pixelformat = AV_PIX_FMT_RGBA;
+						special_frame->realwidth = desc.Width;
+						special_frame->realheight = desc.Height;
+						special_frame->realstride = desc.Width << 2;
+						special_frame->realsize = special_frame->realwidth * special_frame->realstride;
+						special_frame->linesize[0] = special_frame->realstride;
+
+						unsigned char* lines = special_frame->imgbuf;
+
+						for (int y = 0; y < SPECIAL_FRAME_BLOCK_SIZE; ++y)
+							CopyMemory(&lines[y * special_frame->realstride], special_frame_line, sizeof(special_frame_line));
+
+						dpipe_store(g_pipe[0], special_frame_data);
+						special_frame_state = SPECIAL_FRAME_STATE::READY;
+					}
+				}
+
 				unsigned char *src, *dst;
 				data = dpipe_get(g_pipe[0]);
 				if (nullptr == data) {
@@ -594,7 +911,25 @@ namespace gpa_hook {
 				}
 				frame = (vsource_frame_t*)data->pointer;
 
-				frame->pixelformat = AV_PIX_FMT_RGBA;
+				frame->isunknownformat = false;
+				switch (desc.Format) {
+				case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+				case DXGI_FORMAT_R8G8B8A8_UNORM:
+				case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+					frame->pixelformat = AV_PIX_FMT_RGBA;
+					break;
+				case DXGI_FORMAT_B8G8R8A8_UNORM:
+					frame->pixelformat = AV_PIX_FMT_BGRA;
+					break;
+				case DXGI_FORMAT_R10G10B10A2_UNORM:
+					frame->pixelformat = AV_PIX_FMT_RGBA;
+					frame->isunknownformat = true;
+					break;
+				default:
+					ga_error("unknown frame format\n");
+					// guess it is this one
+					frame->pixelformat = AV_PIX_FMT_RGBA;
+				}
 				frame->realwidth = desc.Width;
 				frame->realheight = desc.Height;
 				frame->realstride = desc.Width << 2;
@@ -649,68 +984,10 @@ namespace gpa_hook {
 		return hr;
 	}
 
-	HRESULT WINAPI DXGIPresent1(IDXGISwapChain1* self, UINT SyncInterval, UINT PresentFlags,
-		const DXGI_PRESENT_PARAMETERS* pPresentParameters,
-		struct GPADispatchTable const*& tlsRef)
+	HRESULT WINAPI D3D11CreateDevice(IDXGIAdapter * pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software, UINT Flags, const D3D_FEATURE_LEVEL * pFeatureLevels, UINT FeatureLevels, UINT SDKVersion, ID3D11Device ** ppDevice, D3D_FEATURE_LEVEL * pFeatureLevel, ID3D11DeviceContext ** ppImmediateContext)
 	{
-		// LAYER_PREAMBLE() is responsible for establishing the correct dispatch table where multiple
-		// layers exist
-		LAYER_PREAMBLE(tlsRef);
-
-		// your layer-specific code/function calls here
-		GPA_LOG_DEBUG("%s", "Workload uses IDXGISwapChain1Table.Present1()");
-
-		// Must call the method on the dispatch table; if you call the API method
-		// directly, no following layers will receive the API call
-
-
-		return self->Present1(SyncInterval, PresentFlags, pPresentParameters);
-	}
-
-	HRESULT WINAPI D3D11CreateDevice(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software, UINT Flags,
-		const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels, UINT SDKVersion,
-		ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel,
-		ID3D11DeviceContext** ppImmediateContext, struct GPADispatchTable const*& tlsRef)
-	{
-		LAYER_PREAMBLE(tlsRef);
-
-		GPA_LOG_DEBUG("%s", "Workload uses DirectX.D3D11CreateDevice()");
-		HRESULT hRes = sDispatchTable.DirectX.D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext, tlsRef);
+		HRESULT hRes = sDispatchTable.DirectX.D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
 
 		return hRes;
 	}
-	HRESULT WINAPI D3D11CreateDeviceAndSwapChain(IDXGIAdapter * pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software, UINT Flags, const D3D_FEATURE_LEVEL * pFeatureLevels,
-		UINT FeatureLevels, UINT SDKVersion, const DXGI_SWAP_CHAIN_DESC * pSwapChainDesc, IDXGISwapChain ** ppSwapChain, ID3D11Device ** ppDevice,
-		D3D_FEATURE_LEVEL * pFeatureLevel, ID3D11DeviceContext ** ppImmediateContext, struct ::GPADispatchTable const*& tlsRef)
-	{
-		LAYER_PREAMBLE(tlsRef);
-		GPA_LOG_DEBUG("%s", "Workload uses DirectX.D3D11CreateDeviceAndSwapChain()");
-
-		HRESULT hr = sDispatchTable.DirectX.D3D11CreateDeviceAndSwapChain(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, ppDevice,
-			pFeatureLevel, ppImmediateContext, tlsRef);
-
-		return hr;
-	}
-
-	HRESULT WINAPI D3D10CreateDevice(IDXGIAdapter * pAdapter, D3D10_DRIVER_TYPE DriverType, HMODULE Software, UINT Flags, UINT SDKVersion, ID3D10Device ** ppDevice,
-		struct ::GPADispatchTable const*& tlsRef)
-	{
-		LAYER_PREAMBLE(tlsRef);
-		GPA_LOG_DEBUG("%s", "Workload uses DirectX.D3D10CreateDevice()");
-
-		HRESULT hr = sDispatchTable.DirectX.D3D10CreateDevice(pAdapter, DriverType, Software, Flags, SDKVersion, ppDevice, tlsRef);
-
-		return hr;
-	}
-
-	HRESULT WINAPI D3D12CreateDevice(IUnknown * pAdapter, D3D_FEATURE_LEVEL MinimumFeatureLevel, const IID & riid, void ** ppDevice, struct ::GPADispatchTable const*& tlsRef)
-	{
-		LAYER_PREAMBLE(tlsRef);
-		GPA_LOG_DEBUG("%s", "Workload uses DirectX.D3D12CreateDevice()");
-
-		HRESULT hr = sDispatchTable.DirectX.D3D12CreateDevice(pAdapter, MinimumFeatureLevel, riid, ppDevice, tlsRef);
-
-		return hr;
-	}
-
 }  // namespace gpa_hook

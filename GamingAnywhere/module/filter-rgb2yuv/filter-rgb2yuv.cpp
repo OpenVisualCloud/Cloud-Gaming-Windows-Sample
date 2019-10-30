@@ -255,8 +255,8 @@ filter_RGB2YUV_threadproc(void *arg) {
 				dstframe->realwidth, dstframe->realheight, dstframe->pixelformat);
 		}
 		//
-		if(srcframe->pixelformat == AV_PIX_FMT_RGBA
-		|| srcframe->pixelformat == AV_PIX_FMT_BGRA/*rgba*/) {
+		if((srcframe->pixelformat == AV_PIX_FMT_RGBA
+		|| srcframe->pixelformat == AV_PIX_FMT_BGRA) && srcframe->isunknownformat == false/*rgba*/) {
 			src[0] = srcframe->imgbuf;
 			src[1] = NULL;
 			srcstride[0] = srcframe->realstride; //srcframe->stride;
@@ -270,6 +270,27 @@ filter_RGB2YUV_threadproc(void *arg) {
 			srcstride[1] = srcframe->linesize[1];
 			srcstride[2] = srcframe->linesize[2];
 			srcstride[3] = NULL;
+		}
+		else if (srcframe->pixelformat == AV_PIX_FMT_RGBA && srcframe->isunknownformat == true) {
+			//Convert A2B10G10R10 to ARGB
+			uint32_t* pixel = (uint32_t *)srcframe->imgbuf;
+			uint32_t a, b, r, g;
+
+			for (int i = 0; i < srcframe->realsize; i += 4) {
+				r = (*pixel >> 0) & 0x3FF;
+				g = (*pixel >> 10) & 0x3FF;
+				b = (*pixel >> 20) & 0x3FF;
+				a = (*pixel >> 30) & 0x003;
+
+				*pixel = ((b >> 2) << 16) | ((g >> 2) << 8) | ((r >> 2)) | a >> 2;
+				//Convert A2B10G10R10 to ARGB other method, for future implementation
+			   //*pixel = ((*pixel & 0x3FC) << 14) | ((*pixel & 0xFF000) >> 4) | ((*pixel & 0x3FC00000) >> 22);
+				pixel++;
+			}
+			src[0] = srcframe->imgbuf;
+			src[1] = NULL;
+			srcstride[0] = srcframe->realstride;
+			srcstride[1] = 0;
 		} else {
 			ga_error("filter-RGB2YUV: unsupported pixel format (%d)\n", srcframe->pixelformat);
 			exit(-1);

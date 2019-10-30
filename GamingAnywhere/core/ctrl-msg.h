@@ -32,7 +32,8 @@
 #define	CTRL_MSGSYS_SUBTYPE_NULL	0	/* system control message: NULL */
 #define	CTRL_MSGSYS_SUBTYPE_SHUTDOWN	1	/* system control message: shutdown */
 #define	CTRL_MSGSYS_SUBTYPE_NETREPORT	2	/* system control message: report networking */
-#define	CTRL_MSGSYS_SUBTYPE_MAX		2	/* must equal to the last sub message type */
+#define	CTRL_MSGSYS_SUBTYPE_SPECIAL_FRAME	3	/* system control message: request for the 'special frame' */
+#define	CTRL_MSGSYS_SUBTYPE_MAX		3	/* must equal to the last sub message type */
 
 #if defined(WIN32) && !defined(MSYS)
 #define	BEGIN_CTRL_MESSAGE_STRUCT	__pragma(pack(push, 1))	/* equal to #pragma pack(push, 1) */

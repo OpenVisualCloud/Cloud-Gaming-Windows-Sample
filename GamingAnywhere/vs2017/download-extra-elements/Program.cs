@@ -31,151 +31,244 @@ namespace download_extra_elements
 {
     class Program
     {
-        static void DownloadFFMPEG(string currentPath, bool DEV_VERSION)
+        static void MoveFiles(string currPath, string[] filesToMove, string originFolder)
+        {
+            foreach (string file in filesToMove)
+            {
+                string source = file;
+                string destination = currPath + originFolder + Path.GetFileName(file);
+
+                if (!Directory.Exists(currPath + originFolder))
+                {
+                    try
+                    {
+                        System.IO.Directory.CreateDirectory(currPath + originFolder);
+                    }
+                    catch
+                    {
+                        Console.WriteLine("Failed to create folder: " + currPath + originFolder);
+                    }
+                }
+
+                MoveFile(source, destination);
+            }
+        }
+
+        static void MoveFile(string source, string destination)
+        {
+            if (File.Exists(source))
+            {
+                if (!File.Exists(destination))
+                {
+                    try     { File.Move(source, destination); }
+                    catch   { Console.WriteLine("Failed to move file: " + destination); }
+                }
+                else
+                {
+                    try     { File.Delete(destination); }
+                    catch   { Console.WriteLine("Failed to remove file: " + destination); }
+
+                    try     { File.Move(source, destination); }
+                    catch   { Console.WriteLine("Failed to move file: " + destination); }
+                }
+            }
+        }
+
+        // Remove directories
+        static void RemoveDirectories(string currPath, string[] dirList, string anchor)
+        {
+            foreach (string directory in dirList)
+            {
+                string[] includeList = Directory.GetFiles(directory, "*.h", SearchOption.AllDirectories);
+
+                string[] treeDirectories = directory.Split('\\');
+
+                string newDirectory = currPath + anchor + treeDirectories[treeDirectories.Length - 1];
+
+                if (Directory.Exists(newDirectory))
+                {
+                    try
+                    {
+                        string[] oldFiles = Directory.GetFiles(newDirectory, "*.h");
+                        if (oldFiles.Length > 0)
+                        {
+                            foreach (string oldFile in oldFiles)
+                            {
+                                try
+                                {
+                                    File.Delete(oldFile);
+                                }
+                                catch
+                                {
+                                    Console.WriteLine("Failed to delete file: " + oldFile);
+                                }
+
+                            }
+                            File.Delete(newDirectory + "\\*.h");
+                        }
+                        Directory.Delete(newDirectory);
+                    }
+                    catch 
+                    {
+                        Console.WriteLine("Failed to delete folder: " + newDirectory);
+                    }
+                }
+            }
+        }
+
+        static void DownloadFFMPEG(string currentPath, bool DEV_VERSION, string platform)
         {
             try
             {
                 using (var client = new WebClient())
                 {
-                    Console.WriteLine("Downloading FFMPEG shared started");
-                    client.DownloadFile("https://ffmpeg.zeranoe.com/builds/win64/shared/ffmpeg-4.1.4-win64-shared.zip", currentPath + "\\FFMPEG_shared.zip");
+                    Console.WriteLine($"Downloading FFmpeg shared {platform}-bit ");
+                    client.DownloadFile($"https://ffmpeg.zeranoe.com/builds/win{platform}/shared/ffmpeg-latest-win{platform}-shared.zip", currentPath + $"\\FFMPEG_shared{platform}.zip");
                 }
             }
             catch
             {
-                Console.WriteLine("Unable to download FFMPEG shared");
+                Console.WriteLine($"Unable to download FFmpeg shared {platform}-bit");
             }
 
-            string zipPath1 = currentPath + "\\FFMPEG_shared.zip";
-            string extractPath1 = currentPath + "\\FFMPEG_shared";
+            string zipPath1 = currentPath + $"\\FFMPEG_shared{platform}.zip";
+            string extractPath1 = currentPath + $"\\FFMPEG_shared{platform}";
 
             try
             {
-                Console.WriteLine("Installing FFMPEG shared");
+                Console.WriteLine($"Installing FFmpeg shared {platform}-bit");
                 ZipFile.ExtractToDirectory(zipPath1, extractPath1);
 
             }
             catch
             {
-                Console.WriteLine("Unable to install FFMPEG shared");
+                Console.WriteLine($"Unable to install FFmpeg shared {platform}-bit");
             }
 
             string[] dllList = Directory.GetFiles(extractPath1, "*.dll", SearchOption.AllDirectories);
             string[] exeList = Directory.GetFiles(extractPath1, "*.exe", SearchOption.AllDirectories);
 
+            Console.WriteLine("Done!");
+
             if (!DEV_VERSION)
             {
-                foreach (string file in dllList)
-                {
-                    File.Move(file, currentPath + "\\" + Path.GetFileName(file));
-                }
-                foreach (string file in exeList)
-                {
-                    File.Move(file, currentPath + "\\" + Path.GetFileName(file));
-                }
+                // FFMPEG DLL files:
+                MoveFiles(currentPath, dllList, "\\");
+                // FFMPEG exe files:
+                MoveFiles(currentPath, exeList, "\\");
             }
-            else if(DEV_VERSION)
+            else if (DEV_VERSION)
             {
-                foreach (string file in dllList)
-                {
-                    if (!Directory.Exists(currentPath + "\\gaminganywhere\\deps.win64\\bin\\ffmpeg\\"))
-                    {
-                        System.IO.Directory.CreateDirectory(currentPath + "\\gaminganywhere\\deps.win64\\bin\\ffmpeg\\");
-                    }
-                    File.Move(file, currentPath + "\\gaminganywhere\\deps.win64\\bin\\ffmpeg\\" + Path.GetFileName(file));
-                }
-                foreach (string file in exeList)
-                {
-                    if (!Directory.Exists(currentPath + "\\gaminganywhere\\deps.win64\\bin\\ffmpeg\\"))
-                    {
-                        System.IO.Directory.CreateDirectory(currentPath + "\\gaminganywhere\\deps.win64\\bin\\ffmpeg\\");
-                    }
-                    File.Move(file, currentPath + "\\gaminganywhere\\deps.win64\\bin\\ffmpeg\\" + Path.GetFileName(file));
-                }
+
+                // FFMPEG DLL files:
+                MoveFiles(currentPath, dllList, $"\\gaminganywhere\\deps.win{platform}\\bin\\ffmpeg\\");
+                // FFMPEG exe files:
+                MoveFiles(currentPath, exeList, $"\\gaminganywhere\\deps.win{platform}\\bin\\ffmpeg\\");
 
                 try
                 {
                     using (var client = new WebClient())
                     {
-                        Console.WriteLine("Downloading FFMPEG dev started");
-                        client.DownloadFile("https://ffmpeg.zeranoe.com/builds/win64/dev/ffmpeg-4.1.4-win64-dev.zip", currentPath + "\\FFMPEG_dev.zip");
+                        Console.WriteLine($"Downloading FFmpeg dev {platform}-bit");
+                        client.DownloadFile($"https://ffmpeg.zeranoe.com/builds/win{platform}/dev/ffmpeg-latest-win{platform}-dev.zip", currentPath + $"\\FFMPEG_dev{platform}.zip");
                     }
                 }
                 catch
                 {
-                    Console.WriteLine("Unable to download FFMPEG dev");
+                    Console.WriteLine("Unable to download FFmpeg dev {platform}-bit");
                 }
 
-                string zipPath2 = currentPath + "\\FFMPEG_dev.zip";
-                string extractPath2 = currentPath + "\\FFMPEG_dev";
+                string zipPath2 = currentPath + $"\\FFMPEG_dev{platform}.zip";
+                string extractPath2 = currentPath + $"\\FFMPEG_dev{platform}";
 
                 try
                 {
-                    Console.WriteLine("Installing FFMPEG dev");
+                    Console.WriteLine($"Installing FFmpeg dev {platform}-bit");
                     ZipFile.ExtractToDirectory(zipPath2, extractPath2);
                 }
                 catch
                 {
-                    Console.WriteLine("Unable to install FFMPEG dev");
+                    Console.WriteLine($"Unable to install FFmpeg dev {platform}-bit");
                 }
 
                 string[] libList = Directory.GetFiles(extractPath2, "*.lib", SearchOption.AllDirectories);
                 string[] includeDirList = Directory.GetDirectories(extractPath2, "lib*", SearchOption.AllDirectories);
 
-                foreach (string file in libList)
-                {
-                    if (!Directory.Exists(currentPath + "\\gaminganywhere\\deps.win64\\lib\\"))
-                    {
-                        System.IO.Directory.CreateDirectory(currentPath + "\\gaminganywhere\\deps.win64\\lib\\");
-                    }
-                    File.Move(file, currentPath + "\\gaminganywhere\\deps.win64\\lib\\" + Path.GetFileName(file));
-                }
+
+                MoveFiles(currentPath, libList, $"\\gaminganywhere\\deps.win{platform}\\lib\\");
+
+                RemoveDirectories(currentPath, includeDirList, $"\\gaminganywhere\\deps.win{platform}\\include\\");
+
                 foreach (string directory in includeDirList)
                 {
-                    string[] includeList = Directory.GetFiles(directory, "*.h", SearchOption.AllDirectories);
+
+                    string[] dirSplit = directory.Split('\\');
+
+                    if (dirSplit[dirSplit.Length - 1].Equals("lib"))
+                    {
+                        continue;
+                    }
+
+                    string[] includeList = Directory.GetFiles(directory, "*.*", SearchOption.AllDirectories);
                     foreach (string includeFile in includeList)
                     {
                         string lastFolderName = Path.GetFileName(Path.GetDirectoryName(includeFile));
 
-                        if (!Directory.Exists(currentPath + "\\gaminganywhere\\deps.win64\\include\\"))
+                        if (!Directory.Exists(currentPath + $"\\gaminganywhere\\deps.win{platform}\\include\\"))
                         {
-                            System.IO.Directory.CreateDirectory(currentPath + "\\gaminganywhere\\deps.win64\\include\\");
+                            string newDirectory = currentPath + $"\\gaminganywhere\\deps.win{platform}\\include\\";
+                            try
+                            {
+                                System.IO.Directory.CreateDirectory(newDirectory);
+                            }
+                            catch
+                            {
+                                Console.WriteLine("Failed to create direcotry: " + newDirectory);
+                            }
                         }
+
                         if (Directory.Exists(directory))
                         {
-                            Directory.Move(directory, currentPath + "\\gaminganywhere\\deps.win64\\include\\" + lastFolderName);
+                            try
+                            {
+                                Directory.Move(directory, currentPath + $"\\gaminganywhere\\deps.win{platform}\\include\\" + lastFolderName);
+                            }
+                            catch
+                            {
+                                Console.WriteLine("Failed to move directory: " + directory.ToString());
+                            }
                         }
                     }
                 }
+                Console.WriteLine("Done!");
             }
-            Console.WriteLine("Done!");
         }
-        static void DownloadEasyHook(string currentPath, bool DEV_VERSION)
+        static void DownloadEasyHook(string currentPath, bool DEV_VERSION, string platform)
         {
             try
             {
                 using (var client = new WebClient())
                 {
-                    Console.WriteLine("Downloading EasyHook started");
-                    client.DownloadFile("https://github.com/EasyHook/EasyHook/releases/download/v2.7.6789.0/EasyHook-2.7.6789.0-Binaries.zip", currentPath + "\\EasyHook.zip");
+                    Console.WriteLine($"Downloading EasyHook {platform}-bit");
+                    client.DownloadFile("https://github.com/EasyHook/EasyHook/releases/download/v2.7.6789.0/EasyHook-2.7.6789.0-Binaries.zip", currentPath + $"\\EasyHook{platform}.zip");
                 }
             }
             catch
             {
-                Console.WriteLine("Unable to download EasyHook");
+                Console.WriteLine($"Unable to download EasyHook {platform}-bit");
             }
 
-            string zipPath = currentPath + "\\EasyHook.zip";
-            string extractPath = currentPath + "\\EasyHook";
+            string zipPath = currentPath + $"\\EasyHook{platform}.zip";
+            string extractPath = currentPath + $"\\EasyHook{platform}";
 
             try
             {
-                Console.WriteLine("Installing EasyHook");
+                Console.WriteLine($"Installing EasyHook {platform}-bit");
                 ZipFile.ExtractToDirectory(zipPath, extractPath);
             }
             catch
             {
-                Console.WriteLine("Unable to install EasyHook");
+                Console.WriteLine($"Unable to install EasyHook {platform}-bit");
             }
 
             string[] libList = Directory.GetFiles(extractPath + "\\projects\\easyhook\\Deploy\\NetFX4.0", "EasyHook*.lib", SearchOption.AllDirectories);
@@ -185,48 +278,14 @@ namespace download_extra_elements
             //string[] includeDirList = Directory.GetDirectories(extractPath, "*.h", SearchOption.AllDirectories);
             if (!DEV_VERSION)
             {
-                foreach (string binFile in binList)
-                {
-                    File.Move(binFile, currentPath + "\\" + Path.GetFileName(binFile));
-                }
+                MoveFiles(currentPath, binList, "\\");
             }
             if (DEV_VERSION)
             {
-                foreach (string binFile in binList)
-                {
-                    if (!Directory.Exists(currentPath + "\\gaminganywhere\\deps.win64\\bin\\EasyHook\\"))
-                    {
-                        System.IO.Directory.CreateDirectory(currentPath + "\\gaminganywhere\\deps.win64\\bin\\EasyHook\\");
-                    }
-                    if (File.Exists(binFile))
-                    {
-                        File.Move(binFile, currentPath + "\\gaminganywhere\\deps.win64\\bin\\EasyHook\\" + Path.GetFileName(binFile));
-                    }
-                }
-                foreach (string includeFile in includeList)
-                {
-                    if (!Directory.Exists(currentPath + "\\gaminganywhere\\deps.win64\\include\\"))
-                    {
-                        System.IO.Directory.CreateDirectory(currentPath + "\\gaminganywhere\\deps.win64\\include\\");
-                    }
-                    if (File.Exists(includeFile))
-                    {
-                        File.Move(includeFile, currentPath + "\\gaminganywhere\\deps.win64\\include\\" + Path.GetFileName(includeFile));
-                    }
-                }
-                foreach (string libFile in libList)
-                {
-                    if (!Directory.Exists(currentPath + "\\gaminganywhere\\deps.win64\\lib\\"))
-                    {
-                        System.IO.Directory.CreateDirectory(currentPath + "\\gaminganywhere\\deps.win64\\lib\\");
-                    }
-                    if (File.Exists(libFile))
-                    {
-                        File.Move(libFile, currentPath + "\\gaminganywhere\\deps.win64\\lib\\" + Path.GetFileName(libFile));
-                    }
-                }
+                MoveFiles(currentPath, binList, $"\\gaminganywhere\\deps.win{platform}\\bin\\EasyHook\\");
+                MoveFiles(currentPath, includeList, $"\\gaminganywhere\\deps.win{platform}\\include\\");
+                MoveFiles(currentPath, libList, $"\\gaminganywhere\\deps.win{platform}\\lib\\");
             }
-
             Console.WriteLine("Done!");
         }
         //TODO: for future implementation
@@ -238,29 +297,72 @@ namespace download_extra_elements
         //        Directory. CloudGraphicsGamingAnywhere
         //        File.Copy(file, currentPath + "\\" + Path.GetFileName(file));
         //    }
-
         //}
+        static void PrintInfoBanner(string platform)
+        {
+            Console.WriteLine("");
+            Console.WriteLine("+++++++++++++++++++++++++++++++");
+            Console.WriteLine($"+    Architecture: {platform}-bit     +");
+            Console.WriteLine("+++++++++++++++++++++++++++++++");
+        }
         static void Main(string[] args)
         {
-            Console.WriteLine("### Extra packages manager ###");
+            Console.WriteLine("");
+            Console.WriteLine("################################");
+            Console.WriteLine("#### Extra packages manager ####");
+            Console.WriteLine("################################");
 
             bool DEV_VERSION = false;
+            string platform = null;
             string currentPath = Directory.GetCurrentDirectory();
 
             Console.WriteLine("Path: " + currentPath);
 
-            if (args.Length != 0)
+            if (args.Length > 0)
             {
-                if (args[0].ToString().Equals("dev"))
+                foreach (Object obj in args)
                 {
-                    DEV_VERSION = true;
-                    //DownloadCloudGamingForWindowsSourceCode(currentPath);
+                    if (obj.ToString().Equals("dev"))
+                    {
+                        DEV_VERSION = true;
+                        //DownloadCloudGamingForWindowsSourceCode(currentPath);
+                    }
+                    if (obj.ToString().Equals("x64"))
+                    {
+                        platform = "64";
+                    }
+                    if (obj.ToString().Equals("x86"))
+                    {
+                        platform = "32";
+                    }
                 }
-
             }
-
-            DownloadFFMPEG(currentPath, DEV_VERSION);
-            DownloadEasyHook(currentPath, DEV_VERSION);
+            switch(platform)
+            {
+                case "64":
+                    PrintInfoBanner(platform);
+                    DownloadFFMPEG(currentPath, DEV_VERSION, platform);
+                    DownloadEasyHook(currentPath, DEV_VERSION, platform);
+                    break;
+                case "32":
+                    PrintInfoBanner(platform);
+                    DownloadFFMPEG(currentPath, DEV_VERSION, platform);
+                    DownloadEasyHook(currentPath, DEV_VERSION, platform);
+                    break;
+                case null:
+                    platform = "64";
+                    PrintInfoBanner(platform);
+                    DownloadFFMPEG(currentPath, DEV_VERSION, platform);
+                    DownloadEasyHook(currentPath, DEV_VERSION, platform);
+                    platform = "32";
+                    PrintInfoBanner(platform);
+                    DownloadFFMPEG(currentPath, DEV_VERSION, platform);
+                    DownloadEasyHook(currentPath, DEV_VERSION, platform);
+                    break;
+                default:
+                    Console.WriteLine("Wrong parameter \"platform\" provided. Please try x64 to build 64-bit version, x86 to build 32-bit version or leave empty to build both versions.");
+                    break;
+            }
 
             string[] zipList = Directory.GetFiles(currentPath, "*.zip");
             List<string> dirs = new List<string>(Directory.EnumerateDirectories(currentPath));
@@ -270,7 +372,7 @@ namespace download_extra_elements
             }
             foreach (string dir in dirs)
             {
-                if(dir.Contains("FFMPEG_shared") || dir.Contains("FFMPEG_dev") || dir.Contains("EasyHook"))
+                if(dir.Contains("FFMPEG_shared64") || dir.Contains("FFMPEG_dev64") || dir.Contains("FFMPEG_shared32") || dir.Contains("FFMPEG_dev32") || dir.Contains("EasyHook"))
                 {
                     Directory.Delete(dir, true);
                 }

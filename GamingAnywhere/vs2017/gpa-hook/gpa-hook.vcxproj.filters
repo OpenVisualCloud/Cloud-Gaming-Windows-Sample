@@ -5,7 +5,9 @@
     <ClCompile Include="..\..\server\event-driven\ga-hook-coreaudio.cpp" />
     <ClCompile Include="..\..\module\gpa-hook\gpa-hook.cpp" />
     <ClCompile Include="..\..\module\gpa-hook\gpa-hook-directx.cpp" />
-    <ClCompile Include="..\..\module\gpa-hook\gpa-hook-vulkan.cpp" />
+    <ClCompile Include="..\..\server\event-driven\ga-hook-xinput.cpp" />
+    <ClCompile Include="..\..\server\event-driven\ga-hook-dinput8.cpp" />
+    <ClCompile Include="..\..\server\event-driven\ga-hook-dinput8-vtbl.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="DirectX-manifest">
@@ -33,6 +35,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\server\event-driven\ga-hook-common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\server\event-driven\ga-hook-xinput.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\server\event-driven\ga-hook-dinput8.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\server\event-driven\ga-hook-dinput8-vtbl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

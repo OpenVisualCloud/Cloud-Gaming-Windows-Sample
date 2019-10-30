@@ -1,6 +1,6 @@
 /******************************************************************************
         Copyright 2019 Intel Corporation.
- 
+
 This software and the related documents are Intel copyrighted materials,
 and your use of them is governed by the express license under which they
 were provided to you ("License"). Unless the License provides otherwise,
@@ -81,6 +81,7 @@ License.
     #if !defined(STD_STRING)
         #if defined(UNICODE) || defined(_UNICODE)
             #include <wctype.h>
+            #include <string>
 
             #define STD_STRING std::wstring
             #define SPRINTF(dst, count, fmt, ...) swprintf_s(dst, count, fmt, __VA_ARGS__)
@@ -120,12 +121,12 @@ License.
         #define GPA_CPP_EXPORT __attribute__((visibility("default")))
         #define GPA_CLASS_EXPORT __attribute__((visibility("default")))
     #else
-        #define GPA_EXPORT extern "C"
-        #define GPA_LAYER_EXPORT extern "C"
-        #define GPA_CAPTURE_SUPPORT_EXPORT extern "C"
-        #define GPA_FUNCTIONAL_TEST_SUPPORT_EXPORT extern "C"
-        #define GPA_CPP_EXPORT
-        #define GPA_CLASS_EXPORT
+        #define GPA_EXPORT extern "C" __attribute__((visibility("default")))
+        #define GPA_LAYER_EXPORT extern "C" __attribute__((visibility("default")))
+        #define GPA_CAPTURE_SUPPORT_EXPORT extern "C" __attribute__((visibility("default")))
+        #define GPA_FUNCTIONAL_TEST_SUPPORT_EXPORT extern "C" __attribute__((visibility("default")))
+        #define GPA_CPP_EXPORT __attribute__((visibility("default")))
+        #define GPA_CLASS_EXPORT __attribute__((visibility("default")))
     #endif
 
     #include <ctype.h>

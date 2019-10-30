@@ -82,7 +82,7 @@
                   Execute="immediate"
                   Impersonate="no"
                   Return="asyncWait"
-                  ExeCommand="[INSTALLFOLDERSERVER]download-extra-elements.exe" />
+                  ExeCommand="[INSTALLFOLDERSERVER]download-extra-elements.exe x64" />
     <InstallExecuteSequence>
       <Custom Action="EXECUTE_AFTER_FINALIZE_SERVER" After="InstallFinalize">NOT Installed</Custom>
     </InstallExecuteSequence>
@@ -92,7 +92,7 @@
                   Execute="immediate"
                   Impersonate="no"
                   Return="asyncWait"
-                  ExeCommand="[INSTALLFOLDERCLIENT]download-extra-elements.exe" />
+                  ExeCommand="[INSTALLFOLDERCLIENT]download-extra-elements.exe x64" />
     <InstallExecuteSequence>
       <Custom Action="EXECUTE_AFTER_FINALIZE_CLIENT" After="InstallFinalize">NOT Installed</Custom>
     </InstallExecuteSequence>

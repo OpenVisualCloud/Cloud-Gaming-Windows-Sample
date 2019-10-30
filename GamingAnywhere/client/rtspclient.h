@@ -32,14 +32,18 @@
 #endif
 #include "dpipe.h"
 
+#include <atomic>
+
 #define	SDL_USEREVENT_CREATE_OVERLAY	0x0001
 #define	SDL_USEREVENT_OPEN_AUDIO	0x0002
 #define	SDL_USEREVENT_RENDER_IMAGE	0x0004
 #define	SDL_USEREVENT_RENDER_TEXT	0x0008
+#define	SDL_USEREVENT_SPECIAL_FRAME_TIMER	0x0010
 
 #define SDL_AUDIO_BUFFER_SIZE		2048
 
 extern int image_rendered;
+extern std::atomic<bool> expect_special_frame;
 
 #define	RTSP_VIDEOSTATE_NULL	0
  

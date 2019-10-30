@@ -47,6 +47,13 @@
 /** Define the default video source pipe pool size (frames in the pipe) */
 #define	VIDEO_SOURCE_POOLSIZE		8
 
+/** Width and height of the blocks used to recognize the frame for latency measuring */
+#define SPECIAL_FRAME_BLOCK_SIZE 8
+/** How many blocks are used to mark the frame */
+#define SPECIAL_FRAME_BLOCK_COUNT 20
+
+extern EXPORT bool special_frame_sequence[SPECIAL_FRAME_BLOCK_COUNT];
+
 /**
  * Data structure to store a video frame in RGBA or YUV420 format.
  */
@@ -78,6 +85,7 @@ typedef struct vsource_frame_s {
 	int alignment;		/**< \a imgbuf alignment value.
 				 * \a imgbuf = \a imgbuf_internal + \a alignment.
 				 * XXX: NOT USED NOW. */
+	bool isunknownformat;
 }	vsource_frame_t;
 
 /**

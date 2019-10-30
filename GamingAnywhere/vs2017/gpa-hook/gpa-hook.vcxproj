@@ -151,7 +151,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\core\injector\include\injector;..\..\..\deps.win64\include\gpa\;..\..\..\deps.win64\include\gpa\include\;..\..\module\gpa-hook;..\..\..\deps.win64\include;..\..\..\deps.win64\include\live555;..\..\server\event-driven\;..\..\core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\core\injector\include\injector;..\..\..\deps.win64\include\gpa\;..\..\..\deps.win64\include\gpa\include\;..\..\module\gpa-hook;..\..\..\deps.win64\include;..\..\..\deps.win64\include\live555;..\..\server\event-driven\;..\..\core;C:\VulkanSDK\1.1.114.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Debug/</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -178,7 +178,7 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <Link>
-      <AdditionalDependencies>dispatch-table-x64.lib;dynamic-functions-x64.lib;logger-x64.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;ws2_32.lib;libga.lib;swscale.lib;swresample.lib;postproc.lib;avdevice.lib;avfilter.lib;avformat.lib;avcodec.lib;avutil.lib;pthreadVC3.lib;EasyHook64.lib;SDL2.lib;SDL2main.lib;SDL2_ttf.lib</AdditionalDependencies>
+      <AdditionalDependencies>dispatch-table-x64.lib;dynamic-functions-x64.lib;logger-x64.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;ws2_32.lib;libga.lib;swscale.lib;swresample.lib;postproc.lib;avdevice.lib;avfilter.lib;avformat.lib;avcodec.lib;avutil.lib;pthreadVC3.lib;EasyHook64.lib;SDL2.lib;SDL2main.lib;SDL2_ttf.lib;dinput8.lib;dxguid.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\deps.win64\lib;..\..\..\deps.win64\lib\gpa\Debug;$(OutDir)..;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -201,7 +201,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\core\injector\include\injector;..\..\..\deps.win64\include\gpa;..\..\..\deps.win64\include\gpa\include;..\..\module\gpa-hook;..\..\..\deps.win32\include;..\..\..\deps.win32\include\live555;..\..\server\event-driven\;..\..\core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\core\injector\include\injector;..\..\..\deps.win64\include\gpa;..\..\..\deps.win64\include\gpa\include;..\..\module\gpa-hook;..\..\..\deps.win32\include;..\..\..\deps.win32\include\live555;..\..\server\event-driven\;..\..\core;C:\VulkanSDK\1.1.114.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Debug/</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -227,7 +227,7 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <Link>
-      <AdditionalDependencies>dispatch-table-x86.lib;dynamic-functions-x86.lib;logger-x86.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;ws2_32.lib;libga.lib;swscale.lib;swresample.lib;postproc.lib;avdevice.lib;avfilter.lib;avformat.lib;avcodec.lib;avutil.lib;pthreadVC3.lib;EasyHook32.lib;SDL2.lib;SDL2main.lib;SDL2_ttf.lib</AdditionalDependencies>
+      <AdditionalDependencies>dispatch-table-x86.lib;dynamic-functions-x86.lib;logger-x86.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;ws2_32.lib;libga.lib;swscale.lib;swresample.lib;postproc.lib;avdevice.lib;avfilter.lib;avformat.lib;avcodec.lib;avutil.lib;pthreadVC3.lib;EasyHook32.lib;SDL2.lib;SDL2main.lib;SDL2_ttf.lib;dinput8.lib;dxguid.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\deps.win32\lib;..\..\..\deps.win32\lib\gpa\Debug;$(OutDir)..;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x86</AdditionalOptions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -247,7 +247,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\core\injector\include\injector;..\..\..\deps.win64\include\gpa\;..\..\..\deps.win64\include\gpa\include\;..\..\module\gpa-hook;..\..\..\deps.win64\include;..\..\..\deps.win64\include\live555;..\..\server\event-driven\;..\..\core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\core\injector\include\injector;..\..\..\deps.win64\include\gpa\;..\..\..\deps.win64\include\gpa\include\;..\..\module\gpa-hook;..\..\..\deps.win64\include;..\..\..\deps.win64\include\live555;..\..\server\event-driven\;..\..\core;C:\VulkanSDK\1.1.114.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Release/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -273,7 +273,7 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <Link>
-      <AdditionalDependencies>dispatch-table-x64.lib;dynamic-functions-x64.lib;logger-x64.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;ws2_32.lib;libga.lib;swscale.lib;swresample.lib;postproc.lib;avdevice.lib;avfilter.lib;avformat.lib;avcodec.lib;avutil.lib;pthreadVC3.lib;EasyHook64.lib;SDL2.lib;SDL2main.lib;SDL2_ttf.lib</AdditionalDependencies>
+      <AdditionalDependencies>dispatch-table-x64.lib;dynamic-functions-x64.lib;logger-x64.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;ws2_32.lib;libga.lib;swscale.lib;swresample.lib;postproc.lib;avdevice.lib;avfilter.lib;avformat.lib;avcodec.lib;avutil.lib;pthreadVC3.lib;EasyHook64.lib;SDL2.lib;SDL2main.lib;SDL2_ttf.lib;dinput8.lib;dxguid.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\deps.win64\lib;..\..\..\deps.win64\lib\gpa\Release;$(OutDir)..;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -297,7 +297,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\core\injector\include\injector;..\..\..\deps.win64\include\gpa;..\..\..\deps.win64\include\gpa\include;..\..\module\gpa-hook;..\..\..\deps.win64\include;..\..\..\deps.win64\include\live555;..\..\server\event-driven\;..\..\core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\core\injector\include\injector;..\..\..\deps.win64\include\gpa;..\..\..\deps.win64\include\gpa\include;..\..\module\gpa-hook;..\..\..\deps.win64\include;..\..\..\deps.win64\include\live555;..\..\server\event-driven\;..\..\core;C:\VulkanSDK\1.1.114.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>Release/</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -323,7 +323,7 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <Link>
-      <AdditionalDependencies>dispatch-table-x86.lib;dynamic-functions-x86.lib;logger-x86.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;ws2_32.lib;libga.lib;swscale.lib;swresample.lib;postproc.lib;avdevice.lib;avfilter.lib;avformat.lib;avcodec.lib;avutil.lib;pthreadVC3.lib;EasyHook32.lib;SDL2.lib;SDL2main.lib;SDL2_ttf.lib</AdditionalDependencies>
+      <AdditionalDependencies>dispatch-table-x86.lib;dynamic-functions-x86.lib;logger-x86.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;ws2_32.lib;libga.lib;swscale.lib;swresample.lib;postproc.lib;avdevice.lib;avfilter.lib;avformat.lib;avcodec.lib;avutil.lib;pthreadVC3.lib;EasyHook32.lib;SDL2.lib;SDL2main.lib;SDL2_ttf.lib;dinput8.lib;dxguid.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\deps.win32\lib;..\..\..\deps.win32\lib\gpa\Release;$(OutDir)..;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x86</AdditionalOptions>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -495,10 +495,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\module\gpa-hook\gpa-hook-directx.cpp" />
-    <ClCompile Include="..\..\module\gpa-hook\gpa-hook-vulkan.cpp" />
     <ClCompile Include="..\..\module\gpa-hook\gpa-hook.cpp" />
     <ClCompile Include="..\..\server\event-driven\ga-hook-common.cpp" />
     <ClCompile Include="..\..\server\event-driven\ga-hook-coreaudio.cpp" />
+    <ClCompile Include="..\..\server\event-driven\ga-hook-dinput8-vtbl.c" />
+    <ClCompile Include="..\..\server\event-driven\ga-hook-dinput8.cpp" />
+    <ClCompile Include="..\..\server\event-driven\ga-hook-xinput.cpp" />
     <None Include="..\..\module\gpa-hook\directx-custom.json" />
     <None Include="..\..\module\gpa-hook\vulkan-custom.json" />
     <None Include="DirectX-manifest" />
@@ -509,6 +511,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\server\event-driven\ga-hook-common.h" />
+    <ClInclude Include="..\..\server\event-driven\ga-hook-dinput8-vtbl.h" />
+    <ClInclude Include="..\..\server\event-driven\ga-hook-dinput8.h" />
+    <ClInclude Include="..\..\server\event-driven\ga-hook-xinput.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
