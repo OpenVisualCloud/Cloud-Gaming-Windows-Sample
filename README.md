@@ -1,3 +1,10 @@
+---
+
+### <b>Join Hackathon [Open Your Mind to Endless Possibilities](https://software.seek.intel.com/OpenVisualCloudHackathon-contest?cid=diad&source=github_display_int&campid=ww_q1_2021_ovc_iotg&content=cont-reg_all)<br>Registration: Jan 11 - March 12, 2021</b>   
+
+---
+
+
 # Introduction
 
 &nbsp;&nbsp;&nbsp;&nbsp;The purpose of this document to provide guidance how to use Cloud Gaming For Windows reference solution on Windows 10 OS. Document describes how to configure environment for building this solution and how to run it.
