@@ -4,7 +4,7 @@
 
 &nbsp;&nbsp;&nbsp;&nbsp;The purpose of this document to provide guidance how to use Cloud Gaming For Windows reference solution on Windows 10 OS. Document describes how to configure environment for building this solution and how to run it.
 
-&nbsp;&nbsp;&nbsp;&nbsp;This product is based on open source GamingAnywhere solution, which is available on public github. It provides end to end solution for cloud gaming,  based on client – server architecture. Base solution has been modified and improved to benefit advantages of the Intel hardware architecture.  Modified code is provided as reference solution for future implementations.
+&nbsp;&nbsp;&nbsp;&nbsp;This product is based on open source GamingAnywhere solution, which is available on public github. It provides end to end solution for cloud gaming,  based on client – server architecture. Base solution has been modified and improved to benefit advantages of the Intel hardware architecture.  Modified code is provided as reference solution for future implementations. 
 
 # Architecture
 
