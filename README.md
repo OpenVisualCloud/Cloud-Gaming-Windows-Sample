@@ -1,5 +1,3 @@
-
-
 # Introduction
 
 &nbsp;&nbsp;&nbsp;&nbsp;The purpose of this document to provide guidance how to use Cloud Gaming For Windows reference solution on Windows 10 OS. Document describes how to configure environment for building this solution and how to run it.
