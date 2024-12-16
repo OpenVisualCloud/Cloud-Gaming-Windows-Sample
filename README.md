@@ -1,3 +1,9 @@
+# PROJECT NOT UNDER ACTIVE MANAGEMENT #  
+This project will no longer be maintained by Intel.  
+Intel has ceased development and contributions including, but not limited to, maintenance, bug fixes, new releases, or updates, to this project.  
+Intel no longer accepts patches to this project.  
+ If you have an ongoing need to use this project, are interested in independently developing it, or would like to maintain patches for the open source software community, please create your own fork of this project.  
+  
 # Introduction
 
 &nbsp;&nbsp;&nbsp;&nbsp;The purpose of this document to provide guidance how to use Cloud Gaming For Windows reference solution on Windows 10 OS. Document describes how to configure environment for building this solution and how to run it.
